@@ -1,8 +1,31 @@
+/** 
+ * \file detect.c
+ * Example program to detect a device and list capabilities.
+ *
+ * Copyright (C) 2005-2007 Linus Walleij <triad@df.lth.se>
+ * Copyright (C) 2007 Ted Bullock <tbullock@canada.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ */
 #include "common.h"
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
 #define XML_BUFSIZE 0x10000
 
@@ -35,7 +58,7 @@ static void dump_xml_fragment(uint8_t *buf, uint32_t len)
 
 int main (int argc, char **argv)
 {
-  LIBMTP_mtpdevice_t *device;
+  LIBMTP_mtpdevice_t *device, *iter;
   LIBMTP_file_t *files;
   uint32_t xmlfileid = 0;
   char *friendlyname;
@@ -46,6 +69,7 @@ int main (int argc, char **argv)
   uint16_t filetypes_len;
   uint8_t maxbattlevel;
   uint8_t currbattlevel;
+  uint32_t numdevices;
   int ret;
   int probeonly = 0;
 
@@ -56,120 +80,192 @@ int main (int argc, char **argv)
   }
 
   if (probeonly) {
-    uint16_t vid;
-    uint16_t pid;
-
-    ret = LIBMTP_Detect_Descriptor(&vid, &pid);
-    if (ret > 0) {
-      printf("DETECTED MTP DEVICE WITH VID:%04x, PID:%04X\n", vid, pid);
-      exit(0);
-    } else {
-      exit(1);
-    }
+//    uint16_t vid;
+//    uint16_t pid;
+//
+//    ret = LIBMTP_Detect_Descriptor(&vid, &pid);
+//    if (ret > 0) {
+//      printf("DETECTED MTP DEVICE WITH VID:%04x, PID:%04X\n", vid, pid);
+//      exit(0);
+//    } else {
+//      exit(1);
+//    }
+    fprintf(stdout, "LIBMTP Panic: Probing has been disabled until it has "
+	    "been refactored to\nuse multiple devices\n");
   }
 
-  device = LIBMTP_Get_First_Device();
-  if (device == NULL) {
-    printf("No devices.\n");
-    exit (0);
+  fprintf(stdout, "Attempting to connect device(s)\n");
+
+  switch(LIBMTP_Get_Connected_Devices(&device))
+  {
+  case LIBMTP_ERROR_NO_DEVICE_ATTACHED:
+    fprintf(stdout, "Detect: No Devices have been found\n");
+    return 0;
+  case LIBMTP_ERROR_CONNECTING:
+    fprintf(stderr, "Detect: There has been an error connecting. Exiting\n");
+    return 1;
+  case LIBMTP_ERROR_MEMORY_ALLOCATION:
+    fprintf(stderr, "Detect: Encountered a Memory Allocation Error. Exiting\n");
+    return 1;
+ 
+  /* Unknown general errors - This should never execute */
+  case LIBMTP_ERROR_GENERAL:
+  default:
+    fprintf(stderr, "Detect: There has been an unknown error, please report "
+                    "this to the libmtp developers\n");
+  return 1;
+
+  /* Successfully connected at least one device, so continue */
+  case LIBMTP_ERROR_NONE:
+  	numdevices = LIBMTP_Number_Devices_In_List(device);
+    fprintf(stdout, "Detect: Successfully connected %u devices\n", numdevices);
   }
 
-  LIBMTP_Dump_Device_Info(device);
+  /* iterate through connected MTP devices */
+  for(iter = device; iter != NULL; iter = iter->next)
+  {
+  
+  LIBMTP_Dump_Errorstack(iter);
+  LIBMTP_Clear_Errorstack(iter);
+  LIBMTP_Dump_Device_Info(iter);
   
   printf("MTP-specific device properties:\n");
   // The friendly name
-  friendlyname = LIBMTP_Get_Friendlyname(device);
+  friendlyname = LIBMTP_Get_Friendlyname(iter);
   if (friendlyname == NULL) {
-    printf("   Friendly name: (NULL)\n");
+    fprintf(stdout, "   Friendly name: (NULL)\n");
   } else {
-    printf("   Friendly name: %s\n", friendlyname);
+    fprintf(stdout, "   Friendly name: %s\n", friendlyname);
     free(friendlyname);
   }
-  syncpartner = LIBMTP_Get_Syncpartner(device);
+  syncpartner = LIBMTP_Get_Syncpartner(iter);
   if (syncpartner == NULL) {
-    printf("   Synchronization partner: (NULL)\n");
+    fprintf(stdout, "   Synchronization partner: (NULL)\n");
   } else {
-    printf("   Synchronization partner: %s\n", syncpartner);
+   fprintf(stdout, "   Synchronization partner: %s\n", syncpartner);
     free(syncpartner);
   }
 
   // Some battery info
-  ret = LIBMTP_Get_Batterylevel(device, &maxbattlevel, &currbattlevel);
+  ret = LIBMTP_Get_Batterylevel(iter, &maxbattlevel, &currbattlevel);
   if (ret == 0) {
-    printf("   Battery level %d of %d (%d%%)\n",currbattlevel, maxbattlevel, 
+    fprintf(stdout, "   Battery level %d of %d (%d%%)\n",currbattlevel, maxbattlevel, 
 	   (int) ((float) currbattlevel/ (float) maxbattlevel * 100.0));
   } else {
     // Silently ignore. Some devices does not support getting the 
     // battery level.
+    LIBMTP_Clear_Errorstack(iter);
   }
 
-  ret = LIBMTP_Get_Supported_Filetypes(device, &filetypes, &filetypes_len);
+  ret = LIBMTP_Get_Supported_Filetypes(iter, &filetypes, &filetypes_len);
   if (ret == 0) {
     uint16_t i;
     
     printf("libmtp supported (playable) filetypes:\n");
     for (i = 0; i < filetypes_len; i++) {
-      printf("   %s\n", LIBMTP_Get_Filetype_Description(filetypes[i]));
+      fprintf(stdout, "   %s\n", LIBMTP_Get_Filetype_Description(filetypes[i]));
     }
+  } else {
+    LIBMTP_Dump_Errorstack(iter);
+    LIBMTP_Clear_Errorstack(iter);
   }
 
   // Secure time XML fragment
-  ret = LIBMTP_Get_Secure_Time(device, &sectime);
+  ret = LIBMTP_Get_Secure_Time(iter, &sectime);
   if (ret == 0 && sectime != NULL) {
-    printf("\nSecure Time:\n%s\n", sectime);
+    fprintf(stdout, "\nSecure Time:\n%s\n", sectime);
     free(sectime);
+  } else {
+    // Silently ignore - there may be devices not supporting secure time.
+    LIBMTP_Clear_Errorstack(iter);
   }
 
   // Device certificate XML fragment
-  ret = LIBMTP_Get_Device_Certificate(device, &devcert);
+  ret = LIBMTP_Get_Device_Certificate(iter, &devcert);
   if (ret == 0 && devcert != NULL) {
-    printf("\nDevice Certificate:\n%s\n", devcert);
+    fprintf(stdout, "\nDevice Certificate:\n%s\n", devcert);
     free(devcert);
+  } else {
+    fprintf(stdout, "Unable to acquire device certificate, perhaps this device "
+                    "does not support this\n");
+    LIBMTP_Dump_Errorstack(iter);
+    LIBMTP_Clear_Errorstack(iter);
   }
 
   // Try to get Media player device info XML file...
-  files = LIBMTP_Get_Filelisting_With_Callback(device, NULL, NULL);
+  files = LIBMTP_Get_Filelisting_With_Callback(iter, NULL, NULL);
   if (files != NULL) {
     LIBMTP_file_t *file, *tmp;
     file = files;
     while (file != NULL) {
-      if (!strcmp(file->filename, "WMPInfo.xml")) {
-	xmlfileid = file->item_id;
+      if (!strcmp(file->filename, "WMPInfo.xml") ||
+      		!strcmp(file->filename, "WMPinfo.xml"))
+      {
+        xmlfileid = file->item_id;
       }
       tmp = file;
       file = file->next;
       LIBMTP_destroy_file_t(tmp);
     }
   }
-  if (xmlfileid != 0) {
+  if (xmlfileid == 0)
+  	fprintf(stdout, "WMPInfo.xml Does not exist on this device\n");
+  if (xmlfileid != 0)
+  {
     FILE *xmltmp = tmpfile();
-    int tmpfile = fileno(xmltmp);
+    int tmpfiledescriptor = fileno(xmltmp);
     
-    if (tmpfile != -1) {
-      int ret = LIBMTP_Get_Track_To_File_Descriptor(device, xmlfileid, tmpfile, NULL, NULL);
-      if (ret == 0) {
-	uint8_t *buf = NULL;
-	uint32_t readbytes;
+    if (tmpfiledescriptor != -1)
+    {
+      int ret = LIBMTP_Get_Track_To_File_Descriptor(iter,
+                                                    xmlfileid,
+                                                    tmpfiledescriptor,
+                                                    NULL,
+                                                    NULL);
+      if (ret == 0)
+      {
+        uint8_t *buf = NULL;
+        uint32_t readbytes;
 
-	buf = malloc(XML_BUFSIZE);
-	if (buf == NULL) {
-	  printf("Could not allocate %08x bytes...\n", XML_BUFSIZE);
-	  exit(1);
-	}
-	lseek(tmpfile, 0, SEEK_SET);
-	readbytes = read(tmpfile, (void*) buf, XML_BUFSIZE);
+        buf = malloc(XML_BUFSIZE);
+        if (buf == NULL)
+        {
+          printf("Could not allocate %08x bytes...\n", XML_BUFSIZE);
+          LIBMTP_Dump_Errorstack(iter);
+          LIBMTP_Clear_Errorstack(iter);
+          LIBMTP_Release_Device_List(device);
+          return 1;
+        }
+        
+        lseek(tmpfiledescriptor, 0, SEEK_SET);
+        readbytes = read(tmpfiledescriptor, (void*) buf, XML_BUFSIZE);
 	
-	if (readbytes >= 2 && readbytes < XML_BUFSIZE) {
-	  printf("\nDevice description WMPInfo.xml file:\n");
-	  dump_xml_fragment(buf, readbytes);
-	}
+        if (readbytes >= 2 && readbytes < XML_BUFSIZE)
+        {
+          fprintf(stdout, "\nDevice description WMPInfo.xml file:\n");
+          dump_xml_fragment(buf, readbytes);
+        }
+        else
+        {
+          perror("Unable to read WMPInfo.xml");
+          LIBMTP_Dump_Errorstack(iter);
+          LIBMTP_Clear_Errorstack(iter);
+        }
+        free(buf);
+      }
+      else
+      {
+        LIBMTP_Dump_Errorstack(iter);
+        LIBMTP_Clear_Errorstack(iter);
       }
       fclose(xmltmp);
     }
   }
 
-  // King Fisher of Triad rocks your world!
-  LIBMTP_Release_Device(device);
+  } /* End For Loop */
+
+  LIBMTP_Release_Device_List(device);
   printf("OK.\n");
-  exit (0);
+  
+  return 0; 
 }

@@ -1,8 +1,29 @@
-/*
- *  libusb-glue.h
+/**
+ * \file libusb-glue.h
+ * Low-level USB interface glue towards libusb.
  *
- *  Created by Richard Low on 24/12/2005.
- *  Modified by Linus Walleij
+ * Copyright (C) 2005-2007 Richard A. Low <richard@wentnet.com>
+ * Copyright (C) 2005-2007 Linus Walleij <triad@df.lth.se>
+ * Copyright (C) 2006-2007 Marcus Meissner
+ * Copyright (C) 2007 Ted Bullock
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ *
+ * Created by Richard Low on 24/12/2005.
+ * Modified by Linus Walleij
  *
  */
 
@@ -38,6 +59,22 @@
  * is set to 0xFFFFFFFFU.
  */
 #define DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST 0x00000004
+/**
+ * This means the device doesn't send zero packets to indicate
+ * end of transfer when the transfer boundary occurs at a 
+ * multiple of 64 bytes (the USB 1.1 endpoint size). Instead, 
+ * exactly one extra byte is sent at the end of the transfer 
+ * if the size is an integer multiple of USB 1.1 endpoint size 
+ * (64 bytes).
+ *
+ * This behaviour is most probably a workaround due to the fact 
+ * that the hardware USB slave controller in the device cannot 
+ * handle zero writes at all, and the usage of the USB 1.1 
+ * endpoint size is due to the fact that the device will "gear 
+ * down" on a USB 1.1 hub, and since 64 bytes is a multiple of 
+ * 512 bytes, it will work with USB 1.1 and USB 2.0 alike.
+ */
+#define DEVICE_FLAG_NO_ZERO_READS 0x00000008
 
 /**
  * Internal USB struct.
@@ -61,11 +98,20 @@ struct _PTP_USB {
   uint32_t device_flags;
 };
 
-int get_device_list(LIBMTP_device_entry_t ** const devices, int * const numdevs);
+struct mtpdevice_list_struct {
+  struct usb_device *libusb_device;
+  PTPParams *params;
+  PTP_USB *ptp_usb;
+  uint8_t interface_number;
+  struct mtpdevice_list_struct *next;
+};
+typedef struct mtpdevice_list_struct mtpdevice_list_t;
+
 int open_device (int busn, int devn, short force, PTP_USB *ptp_usb, PTPParams *params, struct usb_device **dev);
 void dump_usbinfo(PTP_USB *ptp_usb);
 void close_device (PTP_USB *ptp_usb, PTPParams *params, uint8_t interfaceNumber);
-uint16_t connect_first_device(PTPParams *params, PTP_USB *ptp_usb, uint8_t *interfaceNumber);
+LIBMTP_error_number_t find_usb_devices(mtpdevice_list_t **devlist);
+void free_mtpdevice_list(mtpdevice_list_t *devlist);
 
 /* connect_first_device return codes */
 #define PTP_CD_RC_CONNECTED	0

@@ -1,11 +1,30 @@
-/*
+/** 
+ * \file sendtr.c
+ * Example program to send a music track to a device.
  * This program is derived from the exact equivalent in libnjb.
- *
- * This is an improved commandline track transfer program
  * based on Enrique Jorreto Ledesma's work on the original program by 
  * Shaun Jackman and Linus Walleij.
+ *
+ * Copyright (C) 2003-2007 Linus Walleij <triad@df.lth.se>
+ * Copyright (C) 2003-2005 Shaun Jackman
+ * Copyright (C) 2003-2005 Enrique Jorrete Ledesma
+ * Copyright (C) 2006 Chris A. Debenham <chris@adebenham.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
  */
-
 #include <string.h>
 #include <libgen.h>
 #include <sys/stat.h>
@@ -202,7 +221,13 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pt
       
     printf("Sending track...\n");
     ret = LIBMTP_Send_Track_From_File(device, from_path, trackmeta, progress, NULL, parent_id);
-    printf("New track ID: %d\n", trackmeta->item_id);
+    if (ret != 0) {
+      printf("Error sending track.\n");
+      LIBMTP_Dump_Errorstack(device);
+      LIBMTP_Clear_Errorstack(device);
+    } else {
+      printf("New track ID: %d\n", trackmeta->item_id);
+    }
 
     LIBMTP_destroy_track_t(trackmeta);
   
@@ -212,76 +237,75 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pt
 }
 
 void sendtrack_command (int argc, char **argv) {
-    int opt;
-    extern int optind;
-    extern char *optarg;
-    char *partist = NULL;
-    char *ptitle = NULL;
-    char *pgenre = NULL;
-    char *pcodec = NULL;
-    char *palbum = NULL;
-    uint16_t tracknum = 0;
-    uint16_t length = 0;
-    uint16_t year = 0;
-    uint16_t quiet = 0;
-    char *lang;
-      while ( (opt = getopt(argc, argv, "qD:t:a:l:c:g:n:d:y:")) != -1 ) {
-        switch (opt) {
-        case 't':
-          ptitle = strdup(optarg);
-          break;
-        case 'a':
-          partist = strdup(optarg);
-          break;
-        case 'l':
-          palbum = strdup(optarg);
-          break;
-        case 'c':
-          pcodec = strdup(optarg); // FIXME: DSM check for MP3, WAV or WMA
-          break;
-        case 'g':
-          pgenre = strdup(optarg);
-          break;
-        case 'n':
-          tracknum = atoi(optarg);
-          break;
-        case 'd':
-          length = atoi(optarg);
-          break;
-        case 'y':
-          year = atoi(optarg);
-          break;
-        case 'q':
-          quiet = 1;
-          break;
-        default:
-          sendtrack_usage();
-        }
+  int opt;
+  extern int optind;
+  extern char *optarg;
+  char *partist = NULL;
+  char *ptitle = NULL;
+  char *pgenre = NULL;
+  char *pcodec = NULL;
+  char *palbum = NULL;
+  uint16_t tracknum = 0;
+  uint16_t length = 0;
+  uint16_t year = 0;
+  uint16_t quiet = 0;
+  char *lang;
+  while ( (opt = getopt(argc, argv, "qD:t:a:l:c:g:n:d:y:")) != -1 ) {
+    switch (opt) {
+    case 't':
+      ptitle = strdup(optarg);
+      break;
+    case 'a':
+      partist = strdup(optarg);
+      break;
+    case 'l':
+      palbum = strdup(optarg);
+      break;
+    case 'c':
+      pcodec = strdup(optarg); // FIXME: DSM check for MP3, WAV or WMA
+      break;
+    case 'g':
+      pgenre = strdup(optarg);
+      break;
+    case 'n':
+      tracknum = atoi(optarg);
+      break;
+    case 'd':
+      length = atoi(optarg);
+      break;
+    case 'y':
+      year = atoi(optarg);
+      break;
+    case 'q':
+      quiet = 1;
+      break;
+    default:
+      sendtrack_usage();
+    }
+  }
+  argc -= optind;
+  argv += optind;
+  
+  if ( argc != 2 ) {
+    printf("You need to pass a filename and destination.\n");
+    sendtrack_usage();
+  }
+  /*
+   * Check environment variables $LANG and $LC_CTYPE
+   * to see if we want to support UTF-8 unicode
+   */
+  lang = getenv("LANG");
+  if (lang != NULL) {
+    if (strlen(lang) > 5) {
+      char *langsuff = &lang[strlen(lang)-5];
+      if (strcmp(langsuff, "UTF-8")) {
+	printf("Your system does not appear to have UTF-8 enabled ($LANG=\"%s\")\n", lang);
+	printf("If you want to have support for diacritics and Unicode characters,\n");
+	printf("please switch your locale to an UTF-8 locale, e.g. \"en_US.UTF-8\".\n");
       }
-      argc -= optind;
-      argv += optind;
-
-      if ( argc != 2 ) {
-        printf("You need to pass a filename and destination.\n");
-        sendtrack_usage();
-      }
-      /*
- *        * Check environment variables $LANG and $LC_CTYPE
- *               * to see if we want to support UTF-8 unicode
- *                      */
-      lang = getenv("LANG");
-      if (lang != NULL) {
-        if (strlen(lang) > 5) {
-          char *langsuff = &lang[strlen(lang)-5];
-          if (strcmp(langsuff, "UTF-8")) {
-            printf("Your system does not appear to have UTF-8 enabled ($LANG=\"%s\")\n", lang);
-            printf("If you want to have support for diacritics and Unicode characters,\n");
-            printf("please switch your locale to an UTF-8 locale, e.g. \"en_US.UTF-8\".\n");
-          }
-        }
-      }
-
-      printf("%s,%s,%s,%s,%s,%s,%d%d,%d\n",argv[0],argv[1],partist,ptitle,pgenre,palbum,tracknum, length, year);
-      sendtrack_function(argv[0],argv[1],partist,ptitle,pgenre,palbum, tracknum, length, year);
+    }
+  }
+  
+  printf("%s,%s,%s,%s,%s,%s,%d%d,%d\n",argv[0],argv[1],partist,ptitle,pgenre,palbum,tracknum, length, year);
+  sendtrack_function(argv[0],argv[1],partist,ptitle,pgenre,palbum, tracknum, length, year);
 }
-
