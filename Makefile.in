@@ -200,6 +200,7 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libmtp.pc
 EXTRA_DIST = libmtp.pc libmtp.sh COPYING README.windows.txt
 noinst_DATA = libmtp.usermap libmtp.rules libmtp.fdi
+CLEANFILES = libmtp.usermap libmtp.rules libmtp.fdi
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
@@ -587,6 +588,7 @@ install-strip:
 mostlyclean-generic:
 
 clean-generic:
+	-test -z "$(CLEANFILES)" || rm -f $(CLEANFILES)
 
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
