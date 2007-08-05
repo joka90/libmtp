@@ -28,7 +28,8 @@
 #ifndef LIBMTP_H_INCLUSION_GUARD
 #define LIBMTP_H_INCLUSION_GUARD
 
-#define LIBMTP_VERSION 0.1.5
+#define LIBMTP_VERSION 0.2.0
+#define LIBMTP_VERSION_STRING "0.2.0"
 
 /* This handles MSVC pecularities */
 #ifdef _MSC_VER
@@ -278,6 +279,8 @@ struct LIBMTP_playlist_struct {
 struct LIBMTP_album_struct {
   uint32_t album_id; /**< Unique playlist ID */
   char *name; /**< Name of album */
+  char *artist; /**< Name of album artist */
+  char *genre; /**< Genre of album */
   uint32_t *tracks; /**< The tracks in this album */
   uint32_t no_tracks; /**< The number of tracks in this album */
   LIBMTP_album_t *next; /**< Next album or NULL if last album */
@@ -349,6 +352,7 @@ uint32_t LIBMTP_Number_Devices_In_List(LIBMTP_mtpdevice_t *);
 void LIBMTP_Release_Device_List(LIBMTP_mtpdevice_t*);
 void LIBMTP_Release_Device(LIBMTP_mtpdevice_t*);
 void LIBMTP_Dump_Device_Info(LIBMTP_mtpdevice_t*);
+int LIBMTP_Reset_Device(LIBMTP_mtpdevice_t*);
 char *LIBMTP_Get_Modelname(LIBMTP_mtpdevice_t*);
 char *LIBMTP_Get_Serialnumber(LIBMTP_mtpdevice_t*);
 char *LIBMTP_Get_Deviceversion(LIBMTP_mtpdevice_t*);

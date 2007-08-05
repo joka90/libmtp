@@ -1,8 +1,8 @@
 /** 
- * \file format.c
- * Example program that formats the device storage.
+ * \file reset.c
+ * Example program that resets the device.
  *
- * Copyright (C) 2006-2007 Linus Walleij <triad@df.lth.se>
+ * Copyright (C) 2007 Linus Walleij <triad@df.lth.se>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -60,27 +60,26 @@ int main (int argc, char **argv)
     return 0;
   }
 
-  printf("I will now format your device. This means that\n");
-  printf("all content (and licenses) will be lost forever.\n");
-  printf("you will not be able to undo this operation.\n");
+  printf("I will now reset your device. This means that\n");
+  printf("the device may go inactive immediately and may report errors.\n");
   printf("Continue? (y/n)\n");
   if (prompt() == 0) {
-    // This will just format the first storage.
-    ret = LIBMTP_Format_Storage(device, device->storage);
+    ret = LIBMTP_Reset_Device(device);
   } else {
     printf("Aborted.\n");
     ret = 0;
   }
 
   if ( ret != 0 ) {
-    printf("Failed to format device.\n");
+    printf("Failed to reset device.\n");
     LIBMTP_Dump_Errorstack(device);
     LIBMTP_Clear_Errorstack(device);
     LIBMTP_Release_Device(device);
     return 1;
   }
 
-  LIBMTP_Release_Device(device);
+  // It is not possible to release the device after successful reset!
+  // LIBMTP_Release_Device(device);
   printf("OK.\n");
   return 0;
 }

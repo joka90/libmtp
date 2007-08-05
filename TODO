@@ -1,30 +1,32 @@
 TODO file:
 ----------
 
+COMPATIBILITY fixes:
+
+1. COMPATIBILITY: dual-mode devices, i.e. devices exposing both an MTP
+  and a USB Mass Storage Device Class (flashdrive) interface are and
+  have always been problematic. We must find a way to get this to work,
+  eventually. The problem is that the in-kernel mass storage driver hogs
+  the device before the MTP mode gets a chance of being used, whereas
+  the Windows kernel driver apparently does it the other way around, 
+  trying the MTP mode first and then not fall back on mass storage if
+  MTP is available. (For some more explanations se src/libusb-glue.h.)
+  This may involve kernel modifications.
+
+2. COMPATIBILITY: several devices tend to "hang" after disconnect, 
+  needing to be unplugged and replugged before they can be used again. 
+  We don't know why, it may be related to low-level USB behaviour that
+  is not exposed in the logs we read.
 
 SPEEDUP fixes:
 
-1. SPEED: Cache the object info for all items on the device.
-  Right now, ptp_getobjectinfo() is called repeatedly on the same
-  objects during startup, track listing, file listing, playlist listing,
-  album listing and whatever we implement tomorrow. A lot of useless
-  communication can be saved by cacheing this info. Notice that this
-  needs to be updated whenever flush_handles() is called too.
-
-2. SPEED: Cache the supported object properties at first read/startup.
+1. SPEED: Cache the supported object properties at first read/startup.
   then use the cache to check for supported props instead of calling
   out to PTP with ptp_mtp_getobjectpropssupported() every time.
   The cache would be an array of size params->deviceinfo.ImageFormats_len
   with a list for each format of the properties it will support. Notice 
   that this needs to be updated whenever flush_handles() is called too.
-
-3. SPEED: Cache track metadata, file metadata etc, perhaps this is not 
-  desirable since the application using libmtp will do this anyway.
-  (libgphoto2 does it, see http://svn.sourceforge.net/viewvc/gphoto/trunk/libgphoto2/camlibs/ptp2/library.c?r1=9491&r2=9590)
-
-4. SPEED: Whenever we add an object (file, track, playlist...) we
-  should only need to update the cache with relevant data. Atleast for
-  speed caches 1 and 2 above.
+  (THIS MAY BE DISCARDED, IT DOESN'T SEEM TO YIELD MUCH.)
 
 FEATURE fixes:
 
@@ -45,21 +47,35 @@ FEATURE fixes:
   into some /Music or /My Music folder if one exists.
 
 5. FEATURE: Integrate libmtp with HAL / D-Bus so applications can dynamically
-	know when a device has been plugged in or removed. Need a mechanism to 
-	connect a specific hal UDI.
-	
-6. FEATURE: Mechanism to retrieve the DevIcon.fil (Windows ICO format) and 
-	DevLogo.fil (PNG Format) images from the device (if available).	Convert 
-	DevIcon.fil to something usable (PNG)?
-	(Does this belong directly in libmtp or in a layer above?)
+  know when a device has been plugged in or removed. Need a mechanism to 
+  connect a specific hal UDI.
 
-9. FEATURE: Shared device access so that multiple client applications can have
-	an open connection to the device at the same time via a handle. For example,
-	it should be somehow possible to run mtp-detect at the same time as amarok or 
-	mtpfs is connected to a device. This would require some form of resource
-	sharing.
+6. FEATURE: Mechanism to retrieve the device icon device property, else if not
+  present, look for DevIcon.fil (Windows ICO format) and 
+  DevLogo.fil (PNG Format) images from the device (if available).
+
+7. FEATURE: Shared device access so that multiple client applications can have
+  an open connection to the device at the same time via a handle. For example,
+  it should be somehow possible to run mtp-detect at the same time as amarok or 
+  mtpfs is connected to a device. This would require some form of resource
+  sharing.
+
 
 THOSE ARE ALREADY DONE:
 
 1. FEATURE: Make an API that can return several devices and let the user 
   choose which one to operate, not just connect to the first one...
+
+2. SPEED: Cache the object info for all items on the device.
+  Right now, ptp_getobjectinfo() is called repeatedly on the same
+  objects during startup, track listing, file listing, playlist listing,
+  album listing and whatever we implement tomorrow. A lot of useless
+  communication can be saved by cacheing this info. Notice that this
+  needs to be updated whenever flush_handles() is called too.
+  (This came from libgphoto2 implementing it!)
+
+3. SPEED: Cache track metadata, file metadata etc in params->proplist.
+
+4. SPEED: Whenever we add an object (file, track, playlist...) we
+  should only need to update the cache with relevant data. Atleast for
+  speedup caches.
