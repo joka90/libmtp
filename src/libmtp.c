@@ -33,6 +33,8 @@
  * The files libusb-glue.c/.h are just what they say: an
  * interface to libusb for the actual, physical USB traffic.
  */
+#define _LARGEFILE_SOURCE
+#define _LARGEFILE64_SOURCE
 
 #include "libmtp.h"
 #include "unicode.h"
@@ -1781,6 +1783,7 @@ void LIBMTP_Dump_Device_Info(LIBMTP_mtpdevice_t *device)
 	    printf(" READ ONLY");
 	  }
 	  printf("\n");
+	  ptp_free_objectpropdesc(&opd);
 	}
 	free(props);
       }
@@ -2451,7 +2454,7 @@ LIBMTP_file_t *LIBMTP_Get_Filelisting_With_Callback(LIBMTP_mtpdevice_t *device,
   LIBMTP_file_t *curfile = NULL;
   PTPParams *params = (PTPParams *) device->params;
   PTP_USB *ptp_usb = (PTP_USB*) device->usbinfo;
-  int ret;
+  uint16_t ret;
 
   // Get all the handles if we haven't already done that
   if (params->handles.Handler == NULL) {
@@ -2560,7 +2563,6 @@ LIBMTP_file_t *LIBMTP_Get_Filelisting_With_Callback(LIBMTP_mtpdevice_t *device,
 	free(props);
       }
     }
-      
     
     // Add track to a list that will be returned afterwards.
     if (retfiles == NULL) {
@@ -2596,6 +2598,8 @@ LIBMTP_file_t *LIBMTP_Get_Filemetadata(LIBMTP_mtpdevice_t *device, uint32_t cons
 {
   uint32_t i = 0;
   PTPParams *params = (PTPParams *) device->params;
+  PTP_USB *ptp_usb = (PTP_USB*) device->usbinfo;
+  uint16_t ret;
 
   // Get all the handles if we haven't already done that
   if (params->handles.Handler == NULL) {
@@ -2629,15 +2633,84 @@ LIBMTP_file_t *LIBMTP_Get_Filemetadata(LIBMTP_mtpdevice_t *device, uint32_t cons
 
     // Original file-specific properties
     
-    // FIXME: we only have 32-bit file size here; use the PTP_OPC_ObjectSize property
+    // We only have 32-bit file size here; later we use the PTP_OPC_ObjectSize property
     file->filesize = oi->ObjectCompressedSize;
     if (oi->Filename != NULL) {
       file->filename = strdup(oi->Filename);
     }
-    
-    // This is some sort of unique ID so we can keep track of the track.
+
+    // This is some sort of unique ID so we can keep track of the file.
     file->item_id = params->handles.Handler[i];
 
+    /*
+     * If we have a cached, large set of metadata, then use it!
+     */
+    if (params->proplist) {
+      MTPPropList *prop = params->proplist;
+      
+      while (prop != NULL && prop->ObjectHandle != file->item_id) {
+	prop = prop->next;
+      }
+      while (prop != NULL && prop->ObjectHandle == file->item_id) {
+	// Pick ObjectSize here...
+	if (prop->property == PTP_OPC_ObjectSize) {
+	  // This may already be set, but this 64bit precision value 
+	  // is better than the PTP 32bit value, so let it override.
+	  file->filesize = prop->propval.u64;
+	  break;
+	}
+	prop = prop->next;
+      }
+    } else if (ptp_operation_issupported(params,PTP_OC_MTP_GetObjPropList)
+	       && !(ptp_usb->device_flags & DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST)) {
+      MTPPropList *proplist = NULL;
+      MTPPropList *prop;
+      
+      /*
+       * This should retrieve all properties for an object, but on devices
+       * which are inherently broken it will not, so these need the
+       * special flag DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST.
+       */
+      ret = ptp_mtp_getobjectproplist(params, file->item_id, &proplist);
+      if (ret != PTP_RC_OK) {
+	add_ptp_error_to_errorstack(device, ret, "LIBMTP_Get_Filelisting_With_Callback(): call to ptp_mtp_getobjectproplist() failed.");
+	// Silently fall through.
+      }
+      prop = proplist;
+      while (prop != NULL && prop->ObjectHandle == file->item_id) {
+	// Pick ObjectSize here...
+	if (prop->property == PTP_OPC_ObjectSize) {
+	  // This may already be set, but this 64bit precision value 
+	  // is better than the PTP 32bit value, so let it override.
+	  file->filesize = prop->propval.u64;
+	  break;
+	}
+	prop = prop->next;
+      }
+      destroy_mtp_prop_list(proplist);
+    } else {
+      uint16_t *props = NULL;
+      uint32_t propcnt = 0;
+      
+      // First see which properties can be retrieved for this object format
+      ret = ptp_mtp_getobjectpropssupported(params, map_libmtp_type_to_ptp_type(file->filetype), &propcnt, &props);
+      if (ret != PTP_RC_OK) {
+	add_ptp_error_to_errorstack(device, ret, "LIBMTP_Get_Filemetadata(): call to ptp_mtp_getobjectpropssupported() failed.");
+	// Silently fall through.
+      } else {
+	for (i=0;i<propcnt;i++) {
+	  switch (props[i]) {
+	  case PTP_OPC_ObjectSize:
+	    file->filesize = get_u64_from_object(device, file->item_id, PTP_OPC_ObjectSize, 0);
+	    break;
+	  default:
+	    break;
+	  }
+	}
+	free(props);
+      }
+    }
+    
     return file;
     
   }
@@ -3165,7 +3238,11 @@ int LIBMTP_Get_File_To_File(LIBMTP_mtpdevice_t *device, uint32_t const id,
   if ( (fd = open(path, O_RDWR|O_CREAT|O_TRUNC|O_BINARY,S_IRWXU|S_IRGRP)) == -1 ) {
 #endif
 #else
+#ifdef __USE_LARGEFILE64
+  if ( (fd = open64(path, O_RDWR|O_CREAT|O_TRUNC|O_LARGEFILE,S_IRWXU|S_IRGRP)) == -1) {
+#else
   if ( (fd = open(path, O_RDWR|O_CREAT|O_TRUNC,S_IRWXU|S_IRGRP)) == -1) {
+#endif
 #endif
     add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Get_File_To_File(): Could not create file.");
     return -1;
@@ -3345,7 +3422,11 @@ int LIBMTP_Send_Track_From_File(LIBMTP_mtpdevice_t *device,
   if ( (fd = open(path, O_RDONLY|O_BINARY) == -1 ) {
 #endif
 #else
+#ifdef __USE_LARGEFILE64
+  if ( (fd = open64(path, O_RDONLY|O_LARGEFILE)) == -1) {
+#else
   if ( (fd = open(path, O_RDONLY)) == -1) {
+#endif
 #endif
     printf("LIBMTP_Send_Track_From_File(): Could not open source file \"%s\"\n", path);
     return -1;
@@ -3433,29 +3514,8 @@ int LIBMTP_Send_Track_From_File_Descriptor(LIBMTP_mtpdevice_t *device,
                          LIBMTP_progressfunc_t const callback,
 			 void const * const data, uint32_t const parenthandle)
 {
-  uint16_t ret;
-  uint32_t store = get_first_storageid(device);
   int subcall_ret;
-  PTPParams *params = (PTPParams *) device->params;
-  uint32_t localph = parenthandle;
-  PTP_USB *ptp_usb = (PTP_USB*) device->usbinfo;
-  uint8_t nonconsumable = 0x00U; /* By default it is consumable */
-  uint32_t i = 0;
-
-  subcall_ret = check_if_file_fits(device, metadata->filesize);
-  if (subcall_ret != 0) {
-    return -1;
-  }
-
-  if (localph == 0) {
-    localph = device->default_music_folder;
-  }
-
-  // Sanity check: no zerolength files
-  if (metadata->filesize == 0) {
-    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Send_Track_From_File_Descriptor(): File of zero size.");
-    return -1;
-  }
+  LIBMTP_file_t filedata;
 
   // Sanity check, is this really a track?
   if (metadata->filetype != LIBMTP_FILETYPE_WAV &&
@@ -3468,10 +3528,250 @@ int LIBMTP_Send_Track_From_File_Descriptor(LIBMTP_mtpdevice_t *device,
       metadata->filetype != LIBMTP_FILETYPE_M4A &&
       metadata->filetype != LIBMTP_FILETYPE_MP4 &&
       metadata->filetype != LIBMTP_FILETYPE_UNDEF_AUDIO) {
-    printf("LIBMTP_Send_Track_From_File_Descriptor: I don't think this is actually a track, strange filetype...\n");
-    nonconsumable = 0x01U; /* Not suitable for consumption, atleast it's no track! */
-  } else if (metadata->filetype == LIBMTP_FILETYPE_UNDEF_AUDIO) {
-    nonconsumable = 0x01U; /* Not suitable for consumption */
+    printf("LIBMTP_Send_Track_From_File_Descriptor(): "
+	   "I don't think this is actually a track, strange filetype...\n");
+  }
+
+  // Wrap around the file transfer function
+  filedata.item_id = metadata->item_id;
+  filedata.parent_id = metadata->parent_id;
+  filedata.filename = metadata->filename;
+  filedata.filesize = metadata->filesize;
+  filedata.filetype = metadata->filetype;
+  filedata.next = NULL;
+
+  subcall_ret = LIBMTP_Send_File_From_File_Descriptor(device,
+						      fd, 
+						      &filedata,
+						      callback,
+						      data, 
+						      parenthandle);
+
+  if (subcall_ret != 0) {
+    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Send_Track_From_File_Descriptor(): "
+			    "subcall to LIBMTP_Send_File_From_File_Descriptor failed.");
+    // We used to delete the file here, but don't... It might be OK after all.
+    // (void) LIBMTP_Delete_Object(device, metadata->item_id);
+    return -1;
+  }
+  
+  // Pick up new item (and parent) ID
+  metadata->item_id = filedata.item_id;
+  metadata->parent_id = filedata.parent_id;
+
+  // Set track metadata for the new fine track
+  subcall_ret = LIBMTP_Update_Track_Metadata(device, metadata);
+  if (subcall_ret != 0) {
+    // Subcall will add error to errorstack
+    // We used to delete the file here, but don't... It might be OK after all.
+    // (void) LIBMTP_Delete_Object(device, metadata->item_id);
+    return -1;
+  }
+
+  add_object_to_cache(device, metadata->item_id);
+
+  return 0;
+}
+
+/**
+ * This function sends a local file to an MTP device.
+ * A filename and a set of metadata must be
+ * given as input.
+ * @param device a pointer to the device to send the track to.
+ * @param path the filename of a local file which will be sent.
+ * @param filedata a file strtuct to pass in info about the file.
+ *                 After this call the field <code>item_id</code>
+ *                 will contain the new file ID.
+ * @param callback a progress indicator function or NULL to ignore.
+ * @param data a user-defined pointer that is passed along to
+ *             the <code>progress</code> function in order to
+ *             pass along some user defined data to the progress
+ *             updates. If not used, set this to NULL.
+ * @param parenthandle the parent (e.g. folder) to store this file
+ *        in. Since some devices are a bit picky about where files
+ *        are placed, a default folder will be chosen if libmtp
+ *        has detected one for the current filetype and this
+ *        parameter is set to 0. If this is 0 and no default folder
+ *        can be found, the file will be stored in the root folder.
+ * @return 0 if the transfer was successful, any other value means
+ *           failure.
+ * @see LIBMTP_Send_File_From_File_Descriptor()
+ * @see LIBMTP_Delete_Object()
+ */
+int LIBMTP_Send_File_From_File(LIBMTP_mtpdevice_t *device,
+			       char const * const path, LIBMTP_file_t * const filedata,
+			       LIBMTP_progressfunc_t const callback,
+			       void const * const data, uint32_t const parenthandle)
+{
+  int fd;
+  int ret;
+
+  // Sanity check
+  if (path == NULL) {
+    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Send_File_From_File(): Bad arguments, path was NULL.");
+    return -1;
+  }
+
+  // Open file
+#ifdef __WIN32__
+#ifdef USE_WINDOWS_IO_H
+  if ( (fd = _open(path, O_RDONLY|O_BINARY) == -1 ) {
+#else
+  if ( (fd = open(path, O_RDONLY|O_BINARY) == -1 ) {
+#endif
+#else
+#ifdef __USE_LARGEFILE64
+  if ( (fd = open64(path, O_RDONLY|O_LARGEFILE)) == -1) {
+#else
+  if ( (fd = open(path, O_RDONLY)) == -1) {
+#endif
+#endif
+    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Send_File_From_File(): Could not open source file.");
+    return -1;
+  }
+
+  ret = LIBMTP_Send_File_From_File_Descriptor(device, fd, filedata, callback, data, parenthandle);
+
+  // Close file.
+#ifdef USE_WINDOWS_IO_H
+  _close(fd);
+#else
+  close(fd);
+#endif
+
+  return ret;
+}
+
+/**
+ * This function sends a generic file from a file descriptor to an
+ * MTP device. A filename and a set of metadata must be
+ * given as input.
+ *
+ * This can potentially be used for sending in a stream of unknown
+ * length. Set <code>filedata->filesize = (uint64_t) -1</code> to
+ * make libmtp send some dummy length to the device and just
+ * accept a stream up to some device-determined max length. There
+ * is not guarantee this will work on all devices... Remember to
+ * set correct metadata for the track with
+ * <code>LIBMTP_Update_Track_Metadata()</code> afterwards if it's
+ * a music file. (This doesn't seem to work very well right now.)
+ *
+ * @param device a pointer to the device to send the file to.
+ * @param fd the filedescriptor for a local file which will be sent.
+ * @param filedata a file strtuct to pass in info about the file.
+ *                 After this call the field <code>item_id</code>
+ *                 will contain the new track ID.
+ * @param callback a progress indicator function or NULL to ignore.
+ * @param data a user-defined pointer that is passed along to
+ *             the <code>progress</code> function in order to
+ *             pass along some user defined data to the progress
+ *             updates. If not used, set this to NULL.
+ * @param parenthandle the parent (e.g. folder) to store this file
+ *        in. Since some devices are a bit picky about where files
+ *        are placed, a default folder will be chosen if libmtp
+ *        has detected one for the current filetype and this
+ *        parameter is set to 0. If this is 0 and no default folder
+ *        can be found, the file will be stored in the root folder.
+ * @return 0 if the transfer was successful, any other value means
+ *           failure.
+ * @see LIBMTP_Send_File_From_File()
+ * @see LIBMTP_Delete_Object()
+ */
+int LIBMTP_Send_File_From_File_Descriptor(LIBMTP_mtpdevice_t *device,
+			 int const fd, LIBMTP_file_t * const filedata,
+                         LIBMTP_progressfunc_t const callback,
+			 void const * const data, uint32_t const parenthandle)
+{
+  uint16_t ret;
+  uint32_t store = get_first_storageid(device);
+  uint32_t localph = parenthandle;
+  PTPParams *params = (PTPParams *) device->params;
+  PTP_USB *ptp_usb = (PTP_USB*) device->usbinfo;
+  int i;
+  int subcall_ret;
+  uint16_t of =  map_libmtp_type_to_ptp_type(filedata->filetype);
+  uint8_t nonconsumable = 0x01U; /* By default it is non-consumable */
+
+  subcall_ret = check_if_file_fits(device, filedata->filesize);
+  if (subcall_ret != 0) {
+    return -1;
+  }
+
+  // Sanity check: no zerolength files
+  if (filedata->filesize == 0) {
+    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Send_File_From_File_Descriptor(): "
+			    "File of zero size.");
+    return -1;
+  }
+
+
+  /*
+   * If this file is among the supported filetypes for this device,
+   * then it is indeed consumable.
+   */
+  for (i=0;i<params->deviceinfo.ImageFormats_len;i++) {
+    if (params->deviceinfo.ImageFormats[i] ==  of) {
+      nonconsumable = 0x00U;
+      break;
+    }
+  }
+
+  /*
+   * If no destination folder was given, look up a default
+   * folder if possible. Perhaps there is some way of retrieveing
+   * the default folder for different forms of content, what
+   * do I know, we use a fixed list in lack of any better method.
+   * Some devices obviously need to have their files in certain
+   * folders in order to find/display them at all (hello Creative),
+   * so we have to have a method for this.
+   */
+
+  if (localph == 0) {
+    if (of == PTP_OFC_WAV ||
+	of == PTP_OFC_MP3 ||
+	of == PTP_OFC_MTP_MP2 ||
+	of == PTP_OFC_MTP_WMA ||
+	of == PTP_OFC_MTP_OGG ||
+	of == PTP_OFC_MTP_FLAC ||
+	of == PTP_OFC_MTP_AAC ||
+	of == PTP_OFC_MTP_M4A ||
+	of == PTP_OFC_AIFF ||
+	//of == PTP_OFC_MTP_MP4 || 	/* ambiguous mp4 can contain video */
+	of == PTP_OFC_MTP_AudibleCodec ||
+	of == PTP_OFC_MTP_UndefinedAudio) {
+      localph = device->default_music_folder;
+    } else if (of == PTP_OFC_MTP_WMV ||
+	       of == PTP_OFC_AVI ||
+	       of == PTP_OFC_MPEG ||
+	       of == PTP_OFC_ASF ||
+	       of == PTP_OFC_QT ||
+	       of == PTP_OFC_MTP_3GP ||
+	       of == PTP_OFC_MTP_MP4 || /* ambiguous mp4 can also contain only audio */
+	       of == PTP_OFC_MTP_UndefinedVideo) {
+      localph = device->default_video_folder;
+    } else if (of == PTP_OFC_EXIF_JPEG ||
+	       of == PTP_OFC_JP2 ||
+	       of == PTP_OFC_JPX ||
+	       of == PTP_OFC_JFIF ||
+	       of == PTP_OFC_TIFF ||
+	       of == PTP_OFC_TIFF_IT ||
+	       of == PTP_OFC_BMP ||
+	       of == PTP_OFC_GIF ||
+	       of == PTP_OFC_PICT ||
+	       of == PTP_OFC_PNG ||
+	       of == PTP_OFC_MTP_WindowsImageFormat) {
+      localph = device->default_picture_folder;
+    } else if (of == PTP_OFC_MTP_vCalendar1 ||
+	       of == PTP_OFC_MTP_vCalendar2 ||
+	       of == PTP_OFC_MTP_UndefinedContact ||
+	       of == PTP_OFC_MTP_vCard2 ||
+	       of == PTP_OFC_MTP_vCard3 ||
+	       of == PTP_OFC_MTP_UndefinedCalendarItem) {
+      localph = device->default_organizer_folder;
+    } else if (of == PTP_OFC_Text
+		) {
+      localph = device->default_text_folder;
+    }
   }
 
   if (ptp_operation_issupported(params,PTP_OC_MTP_SendObjectPropList)) {
@@ -3538,61 +3838,73 @@ int LIBMTP_Send_Track_From_File_Descriptor(LIBMTP_mtpdevice_t *device,
     MTPPropList *prop = NULL;
     uint16_t *props = NULL;
     uint32_t propcnt = 0;
-
-    /* Send an object property list of that is supported */
-
+    
     // default handle
     if (localph == 0)
       localph = 0xFFFFFFFFU; // Set to -1
 
-    metadata->item_id = 0x00000000U;
+    // Must be 0x00000000U for new objects
+    filedata->item_id = 0x00000000U;
 
-    ret = ptp_mtp_getobjectpropssupported (params, map_libmtp_type_to_ptp_type(metadata->filetype), &propcnt, &props);
+    ret = ptp_mtp_getobjectpropssupported(params, of, &propcnt, &props);
 
-    if (ret == PTP_RC_OK)
-    {
-      for (i=0;i<propcnt;i++) {
-        switch (props[i]) {
-          case PTP_OPC_ObjectFileName:
-            prop = new_mtp_prop_entry();
-            prop->ObjectHandle = metadata->item_id;
-            prop->property = PTP_OPC_ObjectFileName;
-            prop->datatype = PTP_DTC_STR;
-            if (metadata->filename != NULL)
-              prop->propval.str = strdup(metadata->filename);
-	    proplist = add_mtp_prop_to_proplist(proplist, prop);
-            break;
-          case PTP_OPC_ProtectionStatus:
-            prop = new_mtp_prop_entry();
-            prop->ObjectHandle = metadata->item_id;
-            prop->property = PTP_OPC_ProtectionStatus;
-            prop->datatype = PTP_DTC_UINT16;
-            prop->propval.u16 = 0x0000U; /* Not protected */
-	    proplist = add_mtp_prop_to_proplist(proplist, prop);
-            break;
-          case PTP_OPC_NonConsumable:
-            prop = new_mtp_prop_entry();
-            prop->ObjectHandle = metadata->item_id;
-            prop->property = PTP_OPC_NonConsumable;
-            prop->datatype = PTP_DTC_UINT8;
-            prop->propval.u8 = nonconsumable;
-	    proplist = add_mtp_prop_to_proplist(proplist, prop);
-            break;
-        }
+    for (i=0;i<propcnt;i++) {
+      PTPObjectPropDesc opd;
+      
+      ret = ptp_mtp_getobjectpropdesc(params, props[i], of, &opd);
+      if (ret != PTP_RC_OK) {
+	add_ptp_error_to_errorstack(device, ret, "LIBMTP_Send_File_From_File_Descriptor(): "
+				"could not get property description.");
+      } else if (opd.GetSet) {
+	switch (props[i]) {
+	case PTP_OPC_ObjectFileName:
+	  prop = new_mtp_prop_entry();
+	  prop->ObjectHandle = filedata->item_id;
+	  prop->property = PTP_OPC_ObjectFileName;
+	  prop->datatype = PTP_DTC_STR;
+	  if (filedata->filename != NULL)
+	    prop->propval.str = strdup(filedata->filename);
+	  proplist = add_mtp_prop_to_proplist(proplist, prop);
+	  break;
+	case PTP_OPC_ProtectionStatus:
+	  prop = new_mtp_prop_entry();
+	  prop->ObjectHandle = filedata->item_id;
+	  prop->property = PTP_OPC_ProtectionStatus;
+	  prop->datatype = PTP_DTC_UINT16;
+	  prop->propval.u16 = 0x0000U; /* Not protected */
+	  proplist = add_mtp_prop_to_proplist(proplist, prop);
+	  break;
+	case PTP_OPC_NonConsumable:
+	  prop = new_mtp_prop_entry();
+	  prop->ObjectHandle = filedata->item_id;
+	  prop->property = PTP_OPC_NonConsumable;
+	  prop->datatype = PTP_DTC_UINT8;
+	  prop->propval.u8 = nonconsumable;
+	  proplist = add_mtp_prop_to_proplist(proplist, prop);
+	  break;
+	case PTP_OPC_Name:
+	  prop = new_mtp_prop_entry();
+	  prop->ObjectHandle = filedata->item_id;
+	  prop->property = PTP_OPC_Name;
+	  prop->datatype = PTP_DTC_STR;
+	  if (filedata->filename != NULL)
+	    prop->propval.str = strdup(filedata->filename);
+	  proplist = add_mtp_prop_to_proplist(proplist, prop);
+	  break;
+	}
       }
-      free(props);
+      ptp_free_objectpropdesc(&opd);
     }
+    free(props);
 
-
-    ret = ptp_mtp_sendobjectproplist(params, &store, &localph, &metadata->item_id,
-				     map_libmtp_type_to_ptp_type(metadata->filetype),
-				     metadata->filesize, proplist);
+    ret = ptp_mtp_sendobjectproplist(params, &store, &localph, &filedata->item_id,
+				     of, filedata->filesize, proplist);
 
     /* Free property list */
     destroy_mtp_prop_list(proplist);
 
     if (ret != PTP_RC_OK) {
-      add_ptp_error_to_errorstack(device, ret, "LIBMTP_Send_Track_From_File_Descriptor: "
+      add_ptp_error_to_errorstack(device, ret, "LIBMTP_Send_File_From_File_Descriptor():" 
 				  "Could not send object property list.");
       if (ret == PTP_RC_AccessDenied) {
 	add_ptp_error_to_errorstack(device, ret, "ACCESS DENIED.");
@@ -3600,353 +3912,28 @@ int LIBMTP_Send_Track_From_File_Descriptor(LIBMTP_mtpdevice_t *device,
       return -1;
     }
   } else if (ptp_operation_issupported(params,PTP_OC_SendObjectInfo)) {
-    PTPObjectInfo new_track;
-	
-    memset(&new_track, 0, sizeof(PTPObjectInfo));
+    PTPObjectInfo new_file;
 
-    /* Else use the fallback compatibility mode */
-    new_track.Filename = metadata->filename;
-    new_track.ObjectCompressedSize = metadata->filesize;
-    new_track.ObjectFormat = map_libmtp_type_to_ptp_type(metadata->filetype);
-		new_track.StorageID = store;
-		new_track.ParentObject = parenthandle;
-    
-    // Create the object
-    ret = ptp_sendobjectinfo(params, &store, &localph, &metadata->item_id, &new_track);
-    
-    if (ret != PTP_RC_OK) {
-      add_ptp_error_to_errorstack(device, ret, "LIBMTP_Send_Track_From_File_Descriptor: Could not send object info.");
-      if (ret == PTP_RC_AccessDenied) {
-	add_ptp_error_to_errorstack(device, ret, "ACCESS DENIED.");
-      }
-      return -1;
+    memset(&new_file, 0, sizeof(PTPObjectInfo));
+  
+    new_file.Filename = filedata->filename;
+    if (filedata->filesize == (uint64_t) -1) {
+      // This is a stream. Set a dummy length...
+      new_file.ObjectCompressedSize = 1;
+    } else {
+      // We loose precision here.
+      new_file.ObjectCompressedSize = (uint32_t) filedata->filesize;
     }
+    new_file.ObjectFormat = of;
+    new_file.StorageID = store;
+    new_file.ParentObject = localph;
 
-    // NOTE: The char* pointers inside the new_track object info are not copies
-    // so don't try to destroy this object info!
-  }
-
-  // Callbacks
-  ptp_usb->callback_active = 1;
-  // The callback will deactivate itself after this amount of data has been sent
-  // One BULK header for the request, one for the data phase. No parameters to the request.
-  ptp_usb->current_transfer_total = metadata->filesize+PTP_USB_BULK_HDR_LEN*2;
-  ptp_usb->current_transfer_complete = 0;
-  ptp_usb->current_transfer_callback = callback;
-  ptp_usb->current_transfer_callback_data = data;
-
-  ret = ptp_sendobject_fromfd(params, fd, metadata->filesize);
-
-  ptp_usb->callback_active = 0;
-  ptp_usb->current_transfer_callback = NULL;
-  ptp_usb->current_transfer_callback_data = NULL;
-
-  if (ret != PTP_RC_OK) {
-    add_ptp_error_to_errorstack(device, ret, "LIBMTP_Send_Track_From_File_Descriptor: Could not send object.");
-    return -1;
-  }
-
-  // Set track metadata for the new fine track
-  subcall_ret = LIBMTP_Update_Track_Metadata(device, metadata);
-  if (subcall_ret != 0) {
-    // Subcall will add error to errorstack
-    // We used to delete the file here, but don't... It might be OK after all.
-    // (void) LIBMTP_Delete_Object(device, metadata->item_id);
-    return -1;
-  }
-  if (nonconsumable != 0x00U) {
-    /* Flag it as non-consumable if it is */
-    subcall_ret = set_object_u8(device, metadata->item_id, PTP_OPC_NonConsumable, nonconsumable);
-    if (subcall_ret != 0) {
-      add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): could not set non-consumable status.");
-      return -1;
-    }
-  }
-
-  add_object_to_cache(device, metadata->item_id);
-
-  return 0;
-}
-
-/**
- * This function sends a local file to an MTP device.
- * A filename and a set of metadata must be
- * given as input.
- * @param device a pointer to the device to send the track to.
- * @param path the filename of a local file which will be sent.
- * @param filedata a file strtuct to pass in info about the file.
- *                 After this call the field <code>item_id</code>
- *                 will contain the new file ID.
- * @param callback a progress indicator function or NULL to ignore.
- * @param data a user-defined pointer that is passed along to
- *             the <code>progress</code> function in order to
- *             pass along some user defined data to the progress
- *             updates. If not used, set this to NULL.
- * @param parenthandle the parent (e.g. folder) to store this file
- *        in. Since some devices are a bit picky about where files
- *        are placed, a default folder will be chosen if libmtp
- *        has detected one for the current filetype and this
- *        parameter is set to 0. If this is 0 and no default folder
- *        can be found, the file will be stored in the root folder.
- * @return 0 if the transfer was successful, any other value means
- *           failure.
- * @see LIBMTP_Send_File_From_File_Descriptor()
- * @see LIBMTP_Delete_Object()
- */
-int LIBMTP_Send_File_From_File(LIBMTP_mtpdevice_t *device,
-			       char const * const path, LIBMTP_file_t * const filedata,
-			       LIBMTP_progressfunc_t const callback,
-			       void const * const data, uint32_t const parenthandle)
-{
-  int fd;
-  int ret;
-
-  // Sanity check
-  if (path == NULL) {
-    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Send_File_From_File(): Bad arguments, path was NULL.");
-    return -1;
-  }
-
-  // Open file
-#ifdef __WIN32__
-#ifdef USE_WINDOWS_IO_H
-  if ( (fd = _open(path, O_RDONLY|O_BINARY) == -1 ) {
-#else
-  if ( (fd = open(path, O_RDONLY|O_BINARY) == -1 ) {
-#endif
-#else
-  if ( (fd = open(path, O_RDONLY)) == -1) {
-#endif
-    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Send_File_From_File(): Could not open source file.");
-    return -1;
-  }
-
-  ret = LIBMTP_Send_File_From_File_Descriptor(device, fd, filedata, callback, data, parenthandle);
-
-  // Close file.
-#ifdef USE_WINDOWS_IO_H
-  _close(fd);
-#else
-  close(fd);
-#endif
-
-  return ret;
-}
-
-/**
- * This function sends a generic file from a file descriptor to an
- * MTP device. A filename and a set of metadata must be
- * given as input.
- *
- * This can potentially be used for sending in a stream of unknown
- * length. Set <code>filedata->filesize = (uint64_t) -1</code> to
- * make libmtp send some dummy length to the device and just
- * accept a stream up to some device-determined max length. There
- * is not guarantee this will work on all devices... Remember to
- * set correct metadata for the track with
- * <code>LIBMTP_Update_Track_Metadata()</code> afterwards if it's
- * a music file. (This doesn't seem to work very well right now.)
- *
- * @param device a pointer to the device to send the file to.
- * @param fd the filedescriptor for a local file which will be sent.
- * @param filedata a file strtuct to pass in info about the file.
- *                 After this call the field <code>item_id</code>
- *                 will contain the new track ID.
- * @param callback a progress indicator function or NULL to ignore.
- * @param data a user-defined pointer that is passed along to
- *             the <code>progress</code> function in order to
- *             pass along some user defined data to the progress
- *             updates. If not used, set this to NULL.
- * @param parenthandle the parent (e.g. folder) to store this file
- *        in. Since some devices are a bit picky about where files
- *        are placed, a default folder will be chosen if libmtp
- *        has detected one for the current filetype and this
- *        parameter is set to 0. If this is 0 and no default folder
- *        can be found, the file will be stored in the root folder.
- * @return 0 if the transfer was successful, any other value means
- *           failure.
- * @see LIBMTP_Send_File_From_File()
- * @see LIBMTP_Delete_Object()
- */
-int LIBMTP_Send_File_From_File_Descriptor(LIBMTP_mtpdevice_t *device,
-			 int const fd, LIBMTP_file_t * const filedata,
-                         LIBMTP_progressfunc_t const callback,
-			 void const * const data, uint32_t const parenthandle)
-{
-  uint16_t ret;
-  uint32_t store = get_first_storageid(device);
-  uint32_t localph = parenthandle;
-  PTPObjectInfo new_file;
-  PTPParams *params = (PTPParams *) device->params;
-  PTP_USB *ptp_usb = (PTP_USB*) device->usbinfo;
-  int i;
-  int subcall_ret;
-  uint16_t *props = NULL;
-  uint32_t propcnt = 0;
-  uint8_t nonconsumable = 0x01U; /* By default it is non-consumable */
-
-  subcall_ret = check_if_file_fits(device, filedata->filesize);
-  if (subcall_ret != 0) {
-    return -1;
-  }
-
-  memset(&new_file, 0, sizeof(PTPObjectInfo));
-
-  new_file.Filename = filedata->filename;
-  if (filedata->filesize == (uint64_t) -1) {
-    // This is a stream. Set a dummy length...
-    new_file.ObjectCompressedSize = 1;
-  } else {
-    // Sanity check: no zerolength files
-    if (filedata->filesize == 0) {
-      add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Send_File_From_File_Descriptor(): File of zero size.");
-      return -1;
-    }
-    new_file.ObjectCompressedSize = filedata->filesize;
-  }
-  new_file.ObjectFormat = map_libmtp_type_to_ptp_type(filedata->filetype);
-
-  /*
-   * If this file is among the supported filetypes for this device,
-   * then it is indeed consumable.
-   */
-  for (i=0;i<params->deviceinfo.ImageFormats_len;i++) {
-    if (params->deviceinfo.ImageFormats[i] == new_file.ObjectFormat) {
-      nonconsumable = 0x00U;
-      break;
-    }
-  }
-
-  /*
-   * If no destination folder was given, look up a default
-   * folder if possible. Perhaps there is some way of retrieveing
-   * the default folder for different forms of content, what
-   * do I know, we use a fixed list in lack of any better method.
-   * Some devices obviously need to have their files in certain
-   * folders in order to find/display them at all (hello Creative),
-   * so we have to have a method for this.
-   */
-
-  if (localph == 0) {
-    uint16_t of = new_file.ObjectFormat;
-    if (of == PTP_OFC_WAV ||
-	of == PTP_OFC_MP3 ||
-	of == PTP_OFC_MTP_MP2 ||
-	of == PTP_OFC_MTP_WMA ||
-	of == PTP_OFC_MTP_OGG ||
-	of == PTP_OFC_MTP_FLAC ||
-	of == PTP_OFC_MTP_AAC ||
-	of == PTP_OFC_MTP_M4A ||
-	of == PTP_OFC_AIFF ||
-	//of == PTP_OFC_MTP_MP4 || 	/* ambiguous mp4 can contain video */
-	of == PTP_OFC_MTP_AudibleCodec ||
-	of == PTP_OFC_MTP_UndefinedAudio) {
-      localph = device->default_music_folder;
-    } else if (of == PTP_OFC_MTP_WMV ||
-	       of == PTP_OFC_AVI ||
-	       of == PTP_OFC_MPEG ||
-	       of == PTP_OFC_ASF ||
-	       of == PTP_OFC_QT ||
-	       of == PTP_OFC_MTP_3GP ||
-	       of == PTP_OFC_MTP_MP4 || /* ambiguous mp4 can also contain only audio */
-	       of == PTP_OFC_MTP_UndefinedVideo) {
-      localph = device->default_video_folder;
-    } else if (of == PTP_OFC_EXIF_JPEG ||
-	       of == PTP_OFC_JP2 ||
-	       of == PTP_OFC_JPX ||
-	       of == PTP_OFC_JFIF ||
-	       of == PTP_OFC_TIFF ||
-	       of == PTP_OFC_TIFF_IT ||
-	       of == PTP_OFC_BMP ||
-	       of == PTP_OFC_GIF ||
-	       of == PTP_OFC_PICT ||
-	       of == PTP_OFC_PNG ||
-	       of == PTP_OFC_MTP_WindowsImageFormat) {
-      localph = device->default_picture_folder;
-    } else if (of == PTP_OFC_MTP_vCalendar1 ||
-	       of == PTP_OFC_MTP_vCalendar2 ||
-	       of == PTP_OFC_MTP_UndefinedContact ||
-	       of == PTP_OFC_MTP_vCard2 ||
-	       of == PTP_OFC_MTP_vCard3 ||
-	       of == PTP_OFC_MTP_UndefinedCalendarItem) {
-      localph = device->default_organizer_folder;
-    } else if (of == PTP_OFC_Text
-		) {
-      localph = device->default_text_folder;
-    }
-  }
-
-  if (ptp_operation_issupported(params,PTP_OC_MTP_SendObjectPropList)) {
-
-    MTPPropList *proplist = NULL;
-    MTPPropList *prop = NULL;
-    
-    // Must be 0x00000000U for new objects
-    filedata->item_id = 0x00000000U;
-
-    ret = ptp_mtp_getobjectpropssupported(params, new_file.ObjectFormat, &propcnt, &props);
-
-    for (i=0;i<propcnt;i++) {
-      switch (props[i]) {
-      case PTP_OPC_ObjectFileName:
-	prop = new_mtp_prop_entry();
-	prop->ObjectHandle = filedata->item_id;
-	prop->property = PTP_OPC_ObjectFileName;
-	prop->datatype = PTP_DTC_STR;
-	prop->propval.str = strdup(new_file.Filename);
-	proplist = add_mtp_prop_to_proplist(proplist, prop);
-	break;
-      case PTP_OPC_ProtectionStatus:
-	prop = new_mtp_prop_entry();
-	prop->ObjectHandle = filedata->item_id;
-	prop->property = PTP_OPC_ProtectionStatus;
-	prop->datatype = PTP_DTC_UINT16;
-	prop->propval.u16 = 0x0000U; /* Not protected */
-	proplist = add_mtp_prop_to_proplist(proplist, prop);
-	break;
-      case PTP_OPC_NonConsumable:
-	prop = new_mtp_prop_entry();
-	prop->ObjectHandle = filedata->item_id;
-	prop->property = PTP_OPC_NonConsumable;
-	prop->datatype = PTP_DTC_UINT8;
-	prop->propval.u8 = nonconsumable;
-	proplist = add_mtp_prop_to_proplist(proplist, prop);
-	break;
-      case PTP_OPC_Name:
-	prop = new_mtp_prop_entry();
-	prop->ObjectHandle = filedata->item_id;
-	prop->property = PTP_OPC_Name;
-	prop->datatype = PTP_DTC_STR;
-	prop->propval.str = strdup(filedata->filename);
-	proplist = add_mtp_prop_to_proplist(proplist, prop);
-	break;
-      }
-    }
-    free(props);
-
-    // default handle
-    if (localph == 0)
-      localph = 0xFFFFFFFFU; // Set to -1
-
-    ret = ptp_mtp_sendobjectproplist(params, &store, &localph, &filedata->item_id,
-				     new_file.ObjectFormat,
-				     new_file.ObjectCompressedSize, proplist);
-
-    /* Free property list */
-    destroy_mtp_prop_list(proplist);
-
-    if (ret != PTP_RC_OK) {
-      add_ptp_error_to_errorstack(device, ret, "LIBMTP_Send_File_From_File(): Could not send object property list.");
-      if (ret == PTP_RC_AccessDenied) {
-	add_ptp_error_to_errorstack(device, ret, "ACCESS DENIED.");
-      }
-      return -1;
-    }
-  } else if (ptp_operation_issupported(params,PTP_OC_SendObjectInfo)) {
     // Create the object
     ret = ptp_sendobjectinfo(params, &store, &localph, &filedata->item_id, &new_file);
+
     if (ret != PTP_RC_OK) {
-      add_ptp_error_to_errorstack(device, ret, "LIBMTP_Send_File_From_File_Descriptor: Could not send object info.");
+      add_ptp_error_to_errorstack(device, ret, "LIBMTP_Send_File_From_File_Descriptor(): "
+				  "Could not send object info.");
       if (ret == PTP_RC_AccessDenied) {
 	add_ptp_error_to_errorstack(device, ret, "ACCESS DENIED.");
       }
@@ -3955,6 +3942,9 @@ int LIBMTP_Send_File_From_File_Descriptor(LIBMTP_mtpdevice_t *device,
     // NOTE: the char* pointers inside new_file are not copies so don't
     // try to destroy this objectinfo!
   }
+
+  // Now there IS an object with this parent handle.
+  filedata->parent_id = localph;
     
   if (filedata->filesize != (uint64_t) -1) {
     // Callbacks
@@ -3978,13 +3968,25 @@ int LIBMTP_Send_File_From_File_Descriptor(LIBMTP_mtpdevice_t *device,
       // That's expected. The stream ends, simply...
       ret = PTP_RC_OK;
     } else {
-      add_ptp_error_to_errorstack(device, ret, "LIBMTP_Send_File_From_File_Descriptor: Error while sending stream.");
+      add_ptp_error_to_errorstack(device, ret, "LIBMTP_Send_File_From_File_Descriptor(): "
+				  "Error while sending stream.");
     }
   }
 
   if (ret != PTP_RC_OK) {
-    add_ptp_error_to_errorstack(device, ret, "LIBMTP_Send_File_From_File_Descriptor: Could not send object.");
+    add_ptp_error_to_errorstack(device, ret, "LIBMTP_Send_File_From_File_Descriptor(): "
+				"Could not send object.");
     return -1;
+  }
+
+  if (!ptp_operation_issupported(params,PTP_OC_MTP_SendObjectPropList) && nonconsumable != 0x00U) {
+    // Flag it as non-consumable if it is
+    subcall_ret = set_object_u8(device, filedata->item_id, PTP_OPC_NonConsumable, nonconsumable);
+    if (subcall_ret != 0) {
+      add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Send_File_From_File_Descriptor(): "
+			      "could not set non-consumable status.");
+      return -1;
+    }
   }
 
   add_object_to_cache(device, filedata->item_id);
@@ -4027,279 +4029,137 @@ int LIBMTP_Update_Track_Metadata(LIBMTP_mtpdevice_t *device,
 			    "could not retrieve supported object properties.");
     return -1;
   }
-  if (ptp_operation_issupported(params,PTP_OC_MTP_SetObjPropList)) {
+  if (ptp_operation_issupported(params, PTP_OC_MTP_SetObjPropList)) {
     MTPPropList *proplist = NULL;
     MTPPropList *prop = NULL;
-    PTPObjectPropDesc opd;
     
     for (i=0;i<propcnt;i++) {
-      switch (props[i]) {
-      case PTP_OPC_Name:
-        if (metadata->title == NULL)
-          break;
-	ret = ptp_mtp_getobjectpropdesc(params, PTP_OPC_Name, map_libmtp_type_to_ptp_type(metadata->filetype), &opd);
-	if (ret != PTP_RC_OK) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				  "could not get property description for PTP_OPC_Name.");
-	  break;
-	}
-        
-	if (opd.GetSet) {
+      PTPObjectPropDesc opd;
+      
+      ret = ptp_mtp_getobjectpropdesc(params, props[i], map_libmtp_type_to_ptp_type(metadata->filetype), &opd);
+      if (ret != PTP_RC_OK) {
+	add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
+				"could not get property description.");
+      } else if (opd.GetSet) {
+	switch (props[i]) {
+	case PTP_OPC_Name:
+	  if (metadata->title == NULL)
+	    break;
 	  prop = new_mtp_prop_entry();
 	  prop->ObjectHandle = metadata->item_id;      
 	  prop->property = PTP_OPC_Name;
 	  prop->datatype = PTP_DTC_STR;
-    prop->propval.str = strdup(metadata->title);
+	  prop->propval.str = strdup(metadata->title);
 	  proplist = add_mtp_prop_to_proplist(proplist, prop);
-	}
-	ptp_free_objectpropdesc(&opd);
-        
-	break;
-      case PTP_OPC_AlbumName:
-        if (metadata->album == NULL)
-          break;
-	ret = ptp_mtp_getobjectpropdesc(params, PTP_OPC_AlbumName, map_libmtp_type_to_ptp_type(metadata->filetype), &opd);
-	if (ret != PTP_RC_OK) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				  "could not get property description for PTP_OPC_AlbumName.");
 	  break;
-	}
-        
-	if (opd.GetSet) {
+	case PTP_OPC_AlbumName:
+	  if (metadata->album == NULL)
+	    break;
 	  prop = new_mtp_prop_entry();
 	  prop->ObjectHandle = metadata->item_id;
 	  prop->property = PTP_OPC_AlbumName;
 	  prop->datatype = PTP_DTC_STR;
-    prop->propval.str = strdup(metadata->album);
-    proplist = add_mtp_prop_to_proplist(proplist, prop);
-	}
-	ptp_free_objectpropdesc(&opd);
-        
-	break;
-      case PTP_OPC_Artist:
-        if (metadata->artist == NULL)
-          break;
-	ret = ptp_mtp_getobjectpropdesc(params, PTP_OPC_Artist, map_libmtp_type_to_ptp_type(metadata->filetype), &opd);
-	if (ret != PTP_RC_OK) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				  "could not get property description for PTP_OPC_Artist.");
+	  prop->propval.str = strdup(metadata->album);
+	  proplist = add_mtp_prop_to_proplist(proplist, prop);
 	  break;
-	}
-        
-	if (opd.GetSet) {
+	case PTP_OPC_Artist:
+	  if (metadata->artist == NULL)
+	    break;
 	  prop = new_mtp_prop_entry();
 	  prop->ObjectHandle = metadata->item_id;      
 	  prop->property = PTP_OPC_Artist;
 	  prop->datatype = PTP_DTC_STR;
-    prop->propval.str = strdup(metadata->artist);
+	  prop->propval.str = strdup(metadata->artist);
 	  proplist = add_mtp_prop_to_proplist(proplist, prop);
-	}
-	ptp_free_objectpropdesc(&opd);
-        
-	break;
-      case PTP_OPC_Genre:
-        if (metadata->genre == NULL)
-          break;
-	ret = ptp_mtp_getobjectpropdesc(params, PTP_OPC_Genre, map_libmtp_type_to_ptp_type(metadata->filetype), &opd);
-	if (ret != PTP_RC_OK) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				  "could not get property description for PTP_OPC_Genre.");
 	  break;
-	}
-        
-	if (opd.GetSet) {
+	case PTP_OPC_Genre:
+	  if (metadata->genre == NULL)
+	    break;
 	  prop = new_mtp_prop_entry();
 	  prop->ObjectHandle = metadata->item_id;      
 	  prop->property = PTP_OPC_Genre;
 	  prop->datatype = PTP_DTC_STR;
-    prop->propval.str = strdup(metadata->genre);
+	  prop->propval.str = strdup(metadata->genre);
 	  proplist = add_mtp_prop_to_proplist(proplist, prop);
-	}
-	ptp_free_objectpropdesc(&opd);
-        
-	break;
-      case PTP_OPC_Duration:
-	ret = ptp_mtp_getobjectpropdesc(params, PTP_OPC_Duration, map_libmtp_type_to_ptp_type(metadata->filetype), &opd);
-	if (ret != PTP_RC_OK) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				  "could not get property description for PTP_OPC_Duration.");
 	  break;
-	}
-        
-	if (opd.GetSet) {
+	case PTP_OPC_Duration:
 	  prop = new_mtp_prop_entry();
 	  prop->ObjectHandle = metadata->item_id;
 	  prop->property = PTP_OPC_Duration;
 	  prop->datatype = PTP_DTC_UINT32;
 	  prop->propval.u32 = metadata->duration;
 	  proplist = add_mtp_prop_to_proplist(proplist, prop);
-	}
-	ptp_free_objectpropdesc(&opd);
-        
-	break;
-      case PTP_OPC_Track:
-	ret = ptp_mtp_getobjectpropdesc(params, PTP_OPC_Track, map_libmtp_type_to_ptp_type(metadata->filetype), &opd);
-	if (ret != PTP_RC_OK) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				  "could not get property description for PTP_OPC_Track.");
 	  break;
-	}
-        
-	if (opd.GetSet) {
+	case PTP_OPC_Track:
 	  prop = new_mtp_prop_entry();
 	  prop->ObjectHandle = metadata->item_id;
 	  prop->property = PTP_OPC_Track;
 	  prop->datatype = PTP_DTC_UINT16;
 	  prop->propval.u16 = metadata->tracknumber;
 	  proplist = add_mtp_prop_to_proplist(proplist, prop);
-	}
-	ptp_free_objectpropdesc(&opd);
-	break;
-      case PTP_OPC_OriginalReleaseDate:
-        if (metadata->date == NULL)
-          break;
-	ret = ptp_mtp_getobjectpropdesc(params, PTP_OPC_OriginalReleaseDate, map_libmtp_type_to_ptp_type(metadata->filetype), &opd);
-	if (ret != PTP_RC_OK) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				  "could not get property description for PTP_OPC_OriginalReleaseDate.");
 	  break;
-	}
-        
-	if (opd.GetSet) {
+	case PTP_OPC_OriginalReleaseDate:
+	  if (metadata->date == NULL)
+	    break;
 	  prop = new_mtp_prop_entry();
 	  prop->ObjectHandle = metadata->item_id;      
 	  prop->property = PTP_OPC_OriginalReleaseDate;
 	  prop->datatype = PTP_DTC_STR;
-    prop->propval.str = strdup(metadata->date);
+	  prop->propval.str = strdup(metadata->date);
 	  proplist = add_mtp_prop_to_proplist(proplist, prop);
-	}
-	ptp_free_objectpropdesc(&opd);
-	break;
-      case PTP_OPC_SampleRate:
-	ret = ptp_mtp_getobjectpropdesc(params, PTP_OPC_SampleRate, map_libmtp_type_to_ptp_type(metadata->filetype), &opd);
-	if (ret != PTP_RC_OK) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				  "could not get property description for PTP_OPC_SampleRate.");
 	  break;
-	}
-        
-	if (opd.GetSet) {
+	case PTP_OPC_SampleRate:
 	  prop = new_mtp_prop_entry();
 	  prop->ObjectHandle = metadata->item_id;      
 	  prop->property = PTP_OPC_SampleRate;
 	  prop->datatype = PTP_DTC_UINT32;
 	  prop->propval.u32 = metadata->samplerate;
 	  proplist = add_mtp_prop_to_proplist(proplist, prop);
-	}
-	ptp_free_objectpropdesc(&opd);
-        
-	break;
-      case PTP_OPC_NumberOfChannels:
-	ret = ptp_mtp_getobjectpropdesc(params, PTP_OPC_NumberOfChannels, map_libmtp_type_to_ptp_type(metadata->filetype), &opd);
-	if (ret != PTP_RC_OK) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				  "could not get property description for PTP_OPC_NumberOfChannels.");
 	  break;
-	}
-        
-	if (opd.GetSet) {
+	case PTP_OPC_NumberOfChannels:
 	  prop = new_mtp_prop_entry();
 	  prop->ObjectHandle = metadata->item_id;      
 	  prop->property = PTP_OPC_NumberOfChannels;
 	  prop->datatype = PTP_DTC_UINT16;
 	  prop->propval.u16 = metadata->nochannels;
 	  proplist = add_mtp_prop_to_proplist(proplist, prop);
-	}
-	ptp_free_objectpropdesc(&opd);
-        
-	break;
-      case PTP_OPC_AudioWAVECodec:
-	ret = ptp_mtp_getobjectpropdesc(params, PTP_OPC_AudioWAVECodec, map_libmtp_type_to_ptp_type(metadata->filetype), &opd);
-	if (ret != PTP_RC_OK) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				  "could not get property description for PTP_OPC_AudioWAVECodec.");
 	  break;
-	}
-        
-	if (opd.GetSet) {
+	case PTP_OPC_AudioWAVECodec:
 	  prop = new_mtp_prop_entry();
 	  prop->ObjectHandle = metadata->item_id;      
 	  prop->property = PTP_OPC_AudioWAVECodec;
 	  prop->datatype = PTP_DTC_UINT32;
 	  prop->propval.u32 = metadata->wavecodec;
 	  proplist = add_mtp_prop_to_proplist(proplist, prop);
-	}
-	ptp_free_objectpropdesc(&opd);
-        
-	break;
-      case PTP_OPC_AudioBitRate:
-	ret = ptp_mtp_getobjectpropdesc(params, PTP_OPC_AudioBitRate, map_libmtp_type_to_ptp_type(metadata->filetype), &opd);
-	if (ret != PTP_RC_OK) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				  "could not get property description for PTP_OPC_AudioBitRate.");
 	  break;
-	}
-        
-	if (opd.GetSet) {
+	case PTP_OPC_AudioBitRate:
 	  prop = new_mtp_prop_entry();
 	  prop->ObjectHandle = metadata->item_id;      
 	  prop->property = PTP_OPC_AudioBitRate;
 	  prop->datatype = PTP_DTC_UINT32;
 	  prop->propval.u32 = metadata->bitrate;
 	  proplist = add_mtp_prop_to_proplist(proplist, prop);
-	}
-	ptp_free_objectpropdesc(&opd);
-        
-	break;
-      case PTP_OPC_BitRateType:
-	ret = ptp_mtp_getobjectpropdesc(params, PTP_OPC_BitRateType, map_libmtp_type_to_ptp_type(metadata->filetype), &opd);
-	if (ret != PTP_RC_OK) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				  "could not get property description for PTP_OPC_BitRateType.");
 	  break;
-	}
-        
-	if (opd.GetSet) {
+	case PTP_OPC_BitRateType:
 	  prop = new_mtp_prop_entry();
 	  prop->ObjectHandle = metadata->item_id;      
 	  prop->property = PTP_OPC_BitRateType;
 	  prop->datatype = PTP_DTC_UINT16;
 	  prop->propval.u16 = metadata->bitratetype;
 	  proplist = add_mtp_prop_to_proplist(proplist, prop);
-	}
-	ptp_free_objectpropdesc(&opd);
-        
-	break;
-      case PTP_OPC_Rating:
-	// TODO: shall this be set for rating 0?
-	if (metadata->rating != 0) {
-	  ret = ptp_mtp_getobjectpropdesc(params, PTP_OPC_Rating, map_libmtp_type_to_ptp_type(metadata->filetype), &opd);
-	  if (ret != PTP_RC_OK) {
-	    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				    "could not get property description for PTP_OPC_Rating.");
-	    break;
-	  }
-          
-	  if (opd.GetSet) {
-	    prop = new_mtp_prop_entry();
-	    prop->ObjectHandle = metadata->item_id;      
-	    prop->property = PTP_OPC_Rating;
-	    prop->datatype = PTP_DTC_UINT16;
-	    prop->propval.u16 = metadata->rating;
-	    proplist = add_mtp_prop_to_proplist(proplist, prop);
-	  }
-	  ptp_free_objectpropdesc(&opd);
-	}
-	break;
-      case PTP_OPC_UseCount:
-	ret = ptp_mtp_getobjectpropdesc(params, PTP_OPC_UseCount, map_libmtp_type_to_ptp_type(metadata->filetype), &opd);
-	if (ret != PTP_RC_OK) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				  "could not get property description for PTP_OPC_UseCount.");
 	  break;
-	}
-        
-	if (opd.GetSet) {
+	case PTP_OPC_Rating:
+	  // TODO: shall this be set for rating 0?
+	  if (metadata->rating == 0)
+	    break;
+	  prop = new_mtp_prop_entry();
+	  prop->ObjectHandle = metadata->item_id;      
+	  prop->property = PTP_OPC_Rating;
+	  prop->datatype = PTP_DTC_UINT16;
+	  prop->propval.u16 = metadata->rating;
+	  proplist = add_mtp_prop_to_proplist(proplist, prop);
+	  break;
+	case PTP_OPC_UseCount:
 	  prop = new_mtp_prop_entry();
 	  prop->ObjectHandle = metadata->item_id;      
 	  prop->property = PTP_OPC_UseCount;
@@ -4307,163 +4167,172 @@ int LIBMTP_Update_Track_Metadata(LIBMTP_mtpdevice_t *device,
 	  prop->propval.u32 = metadata->usecount;
 	  proplist = add_mtp_prop_to_proplist(proplist, prop);
 	}
-	ptp_free_objectpropdesc(&opd);
-	break;
       }
+      ptp_free_objectpropdesc(&opd);
     }
+
     // NOTE: File size is not updated, this should not change anyway.
     // neither will we change the filename.
-        
+    
     ret = ptp_mtp_setobjectproplist(params, proplist);
-
+    
     destroy_mtp_prop_list(proplist);
-          
+    
     if (ret != PTP_RC_OK) {
       // TODO: return error of which property we couldn't set
       add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
 			      "could not set object property list.");
       return -1;
     }
-      
+    
   } else if (ptp_operation_issupported(params,PTP_OC_MTP_SetObjectPropValue)) {
     for (i=0;i<propcnt;i++) {
-      switch (props[i]) {
-      case PTP_OPC_Name:
-	// Update title
-	ret = set_object_string(device, metadata->item_id, PTP_OPC_Name, metadata->title);
-	if (ret != 0) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				  "could not set track title.");
-	}
-	break;
-      case PTP_OPC_AlbumName:
-	// Update album
-	ret = set_object_string(device, metadata->item_id, PTP_OPC_AlbumName, metadata->album);
-	if (ret != 0) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				  "could not set track album name.");
-	}
-	break;
-      case PTP_OPC_Artist:
-	// Update artist
-	ret = set_object_string(device, metadata->item_id, PTP_OPC_Artist, metadata->artist);
-	if (ret != 0) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				  "could not set track artist name.");
-	}
-	break;
-      case PTP_OPC_Genre:
-	// Update genre
-	ret = set_object_string(device, metadata->item_id, PTP_OPC_Genre, metadata->genre);
-	if (ret != 0) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				  "could not set track genre name.");
-	}
-	break;
-      case PTP_OPC_Duration:
-	// Update duration
-	if (metadata->duration != 0) {
-	  ret = set_object_u32(device, metadata->item_id, PTP_OPC_Duration, metadata->duration);
+      PTPObjectPropDesc opd;
+      
+      ret = ptp_mtp_getobjectpropdesc(params, props[i], map_libmtp_type_to_ptp_type(metadata->filetype), &opd);
+      if (ret != PTP_RC_OK) {
+	add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
+				"could not get property description.");
+      } else if (opd.GetSet) {
+	switch (props[i]) {
+	case PTP_OPC_Name:
+	  // Update title
+	  ret = set_object_string(device, metadata->item_id, PTP_OPC_Name, metadata->title);
 	  if (ret != 0) {
 	    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				    "could not set track duration.");
+				    "could not set track title.");
 	  }
-	}
-	break;
-      case PTP_OPC_Track:
-	// Update track number.
-	if (metadata->tracknumber != 0) {
-	  ret = set_object_u16(device, metadata->item_id, PTP_OPC_Track, metadata->tracknumber);
+	  break;
+	case PTP_OPC_AlbumName:
+	  // Update album
+	  ret = set_object_string(device, metadata->item_id, PTP_OPC_AlbumName, metadata->album);
 	  if (ret != 0) {
 	    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				    "could not set track tracknumber.");
+				    "could not set track album name.");
 	  }
-	}
-	break;
-      case PTP_OPC_OriginalReleaseDate:
-	// Update creation datetime
-	ret = set_object_string(device, metadata->item_id, PTP_OPC_OriginalReleaseDate, metadata->date);
-	if (ret != 0) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				  "could not set track release date.");
-	}
-	break;
-	// These are, well not so important.
-      case PTP_OPC_SampleRate:
-	// Update sample rate
-	if (metadata->samplerate != 0) {
-	  ret = set_object_u32(device, metadata->item_id, PTP_OPC_SampleRate, metadata->samplerate);
+	  break;
+	case PTP_OPC_Artist:
+	  // Update artist
+	  ret = set_object_string(device, metadata->item_id, PTP_OPC_Artist, metadata->artist);
 	  if (ret != 0) {
 	    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				    "could not set samplerate.");
+				    "could not set track artist name.");
 	  }
-	}
-	break;
-      case PTP_OPC_NumberOfChannels:
-	// Update number of channels
-	if (metadata->nochannels != 0) {
+	  break;
+	case PTP_OPC_Genre:
+	  // Update genre
+	  ret = set_object_string(device, metadata->item_id, PTP_OPC_Genre, metadata->genre);
+	  if (ret != 0) {
+	    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
+				    "could not set track genre name.");
+	  }
+	  break;
+	case PTP_OPC_Duration:
+	  // Update duration
+	  if (metadata->duration != 0) {
+	    ret = set_object_u32(device, metadata->item_id, PTP_OPC_Duration, metadata->duration);
+	    if (ret != 0) {
+	      add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
+				      "could not set track duration.");
+	    }
+	  }
+	  break;
+	case PTP_OPC_Track:
+	  // Update track number.
+	  if (metadata->tracknumber != 0) {
+	    ret = set_object_u16(device, metadata->item_id, PTP_OPC_Track, metadata->tracknumber);
+	    if (ret != 0) {
+	      add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
+				      "could not set track tracknumber.");
+	    }
+	  }
+	  break;
+	case PTP_OPC_OriginalReleaseDate:
+	  // Update creation datetime
+	  ret = set_object_string(device, metadata->item_id, PTP_OPC_OriginalReleaseDate, metadata->date);
+	  if (ret != 0) {
+	    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
+				    "could not set track release date.");
+	  }
+	  break;
+	  // These are, well not so important.
+	case PTP_OPC_SampleRate:
+	  // Update sample rate
+	  if (metadata->samplerate != 0) {
+	    ret = set_object_u32(device, metadata->item_id, PTP_OPC_SampleRate, metadata->samplerate);
+	    if (ret != 0) {
+	      add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
+				      "could not set samplerate.");
+	    }
+	  }
+	  break;
+	case PTP_OPC_NumberOfChannels:
+	  // Update number of channels
+	  if (metadata->nochannels != 0) {
 	  ret = set_object_u16(device, metadata->item_id, PTP_OPC_NumberOfChannels, metadata->nochannels);
 	  if (ret != 0) {
 	    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
 				    "could not set number of channels.");
 	  }
 	}
-	break;
-      case PTP_OPC_AudioWAVECodec:
-	// Update WAVE codec
-	if (metadata->wavecodec != 0) {
-	  ret = set_object_u32(device, metadata->item_id, PTP_OPC_AudioWAVECodec, metadata->wavecodec);
+	  break;
+	case PTP_OPC_AudioWAVECodec:
+	  // Update WAVE codec
+	  if (metadata->wavecodec != 0) {
+	    ret = set_object_u32(device, metadata->item_id, PTP_OPC_AudioWAVECodec, metadata->wavecodec);
+	    if (ret != 0) {
+	      add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
+				      "could not set WAVE codec.");
+	    }
+	  }
+	  break;
+	case PTP_OPC_AudioBitRate:
+	  // Update bitrate
+	  if (metadata->bitrate != 0) {
+	    ret = set_object_u32(device, metadata->item_id, PTP_OPC_AudioBitRate, metadata->bitrate);
+	    if (ret != 0) {
+	      add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
+				      "could not set bitrate.");
+	  }
+	  }
+	  break;
+	case PTP_OPC_BitRateType:
+	  // Update bitrate type
+	  if (metadata->bitratetype != 0) {
+	    ret = set_object_u16(device, metadata->item_id, PTP_OPC_BitRateType, metadata->bitratetype);
+	    if (ret != 0) {
+	      add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
+				      "could not set bitratetype.");
+	    }
+	  }
+	  break;
+	case PTP_OPC_Rating:
+	  // Update user rating
+	  // TODO: shall this be set for rating 0?
+	  if (metadata->rating != 0) {
+	    ret = set_object_u16(device, metadata->item_id, PTP_OPC_Rating, metadata->rating);
+	    if (ret != 0) {
+	      add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
+				      "could not set user rating.");
+	    }
+	  }
+	  break;
+	case PTP_OPC_UseCount:
+	  // Update use count, set even to zero if desired.
+	  ret = set_object_u32(device, metadata->item_id, PTP_OPC_UseCount, metadata->usecount);
 	  if (ret != 0) {
 	    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				    "could not set WAVE codec.");
-	  }
-	}
-	break;
-      case PTP_OPC_AudioBitRate:
-	// Update bitrate
-	if (metadata->bitrate != 0) {
-	  ret = set_object_u32(device, metadata->item_id, PTP_OPC_AudioBitRate, metadata->bitrate);
-	  if (ret != 0) {
-	    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				    "could not set bitrate.");
-	  }
-	}
-	break;
-      case PTP_OPC_BitRateType:
-	// Update bitrate type
-	if (metadata->bitratetype != 0) {
-	  ret = set_object_u16(device, metadata->item_id, PTP_OPC_BitRateType, metadata->bitratetype);
-	  if (ret != 0) {
-	    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				    "could not set bitratetype.");
-	  }
-	}
-	break;
-      case PTP_OPC_Rating:
-	// Update user rating
-	// TODO: shall this be set for rating 0?
-	if (metadata->rating != 0) {
-	  ret = set_object_u16(device, metadata->item_id, PTP_OPC_Rating, metadata->rating);
-	  if (ret != 0) {
-	    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
-				    "could not set user rating.");
-	  }
-	}
-	break;
-      case PTP_OPC_UseCount:
-	// Update use count, set even to zero if desired.
-	ret = set_object_u32(device, metadata->item_id, PTP_OPC_UseCount, metadata->usecount);
-	if (ret != 0) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Track_Metadata(): "
 				  "could not set use count.");
+	  }
+	  break;
+	  
+	  // NOTE: File size is not updated, this should not change anyway.
+	  // neither will we change the filename.
+	default:
+	  break;
 	}
-	break;
-	
-	// NOTE: File size is not updated, this should not change anyway.
-	// neither will we change the filename.
-      default:
-	break;
       }
+      ptp_free_objectpropdesc(&opd);
     }
     free(props);
   } else {
@@ -5024,62 +4893,71 @@ static int create_new_abstract_list(LIBMTP_mtpdevice_t *device,
     ret = ptp_mtp_getobjectpropssupported(params, objectformat, &propcnt, &props);
 
     for (i=0;i<propcnt;i++) {
-      switch (props[i]) {
-      case PTP_OPC_ObjectFileName:
-	prop = new_mtp_prop_entry();
-	prop->ObjectHandle = *newid;      
-	prop->property = PTP_OPC_ObjectFileName;
-	prop->datatype = PTP_DTC_STR;
-  prop->propval.str = strdup(fname);
-	proplist = add_mtp_prop_to_proplist(proplist, prop);
-	break;
-      case PTP_OPC_ProtectionStatus:
-	prop = new_mtp_prop_entry();
-	prop->ObjectHandle = *newid;
-	prop->property = PTP_OPC_ProtectionStatus;
-	prop->datatype = PTP_DTC_UINT16;
-	prop->propval.u16 = 0x0000U; /* Not protected */
-	proplist = add_mtp_prop_to_proplist(proplist, prop);
-	break;
-      case PTP_OPC_NonConsumable:
-	prop = new_mtp_prop_entry();
-	prop->ObjectHandle = *newid;
-	prop->property = PTP_OPC_NonConsumable;
-	prop->datatype = PTP_DTC_UINT8;
-	prop->propval.u8 = nonconsumable;
-	proplist = add_mtp_prop_to_proplist(proplist, prop);
-	break;
-      case PTP_OPC_Name:
-	if (name != NULL) {
+      PTPObjectPropDesc opd;
+      
+      ret = ptp_mtp_getobjectpropdesc(params, props[i], objectformat, &opd);
+      if (ret != PTP_RC_OK) {
+	add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "create_new_abstract_list(): "
+				"could not get property description.");
+      } else if (opd.GetSet) {
+	switch (props[i]) {
+	case PTP_OPC_ObjectFileName:
+	  prop = new_mtp_prop_entry();
+	  prop->ObjectHandle = *newid;      
+	  prop->property = PTP_OPC_ObjectFileName;
+	  prop->datatype = PTP_DTC_STR;
+	  prop->propval.str = strdup(fname);
+	  proplist = add_mtp_prop_to_proplist(proplist, prop);
+	  break;
+	case PTP_OPC_ProtectionStatus:
 	  prop = new_mtp_prop_entry();
 	  prop->ObjectHandle = *newid;
-	  prop->property = PTP_OPC_Name;
-	  prop->datatype = PTP_DTC_STR;
-	  prop->propval.str = strdup(name);
+	  prop->property = PTP_OPC_ProtectionStatus;
+	  prop->datatype = PTP_DTC_UINT16;
+	  prop->propval.u16 = 0x0000U; /* Not protected */
 	  proplist = add_mtp_prop_to_proplist(proplist, prop);
-	}
-	break;
-      case PTP_OPC_Artist:
-	if (artist != NULL) {
+	  break;
+	case PTP_OPC_NonConsumable:
 	  prop = new_mtp_prop_entry();
 	  prop->ObjectHandle = *newid;
-	  prop->property = PTP_OPC_Artist;
-	  prop->datatype = PTP_DTC_STR;
-	  prop->propval.str = strdup(artist);
+	  prop->property = PTP_OPC_NonConsumable;
+	  prop->datatype = PTP_DTC_UINT8;
+	  prop->propval.u8 = nonconsumable;
 	  proplist = add_mtp_prop_to_proplist(proplist, prop);
+	  break;
+	case PTP_OPC_Name:
+	  if (name != NULL) {
+	    prop = new_mtp_prop_entry();
+	    prop->ObjectHandle = *newid;
+	    prop->property = PTP_OPC_Name;
+	    prop->datatype = PTP_DTC_STR;
+	    prop->propval.str = strdup(name);
+	    proplist = add_mtp_prop_to_proplist(proplist, prop);
+	  }
+	  break;
+	case PTP_OPC_Artist:
+	  if (artist != NULL) {
+	    prop = new_mtp_prop_entry();
+	    prop->ObjectHandle = *newid;
+	    prop->property = PTP_OPC_Artist;
+	    prop->datatype = PTP_DTC_STR;
+	    prop->propval.str = strdup(artist);
+	    proplist = add_mtp_prop_to_proplist(proplist, prop);
+	  }
+	  break;
+	case PTP_OPC_Genre:
+	  if (genre != NULL) {
+	    prop = new_mtp_prop_entry();
+	    prop->ObjectHandle = *newid;
+	    prop->property = PTP_OPC_Genre;
+	    prop->datatype = PTP_DTC_STR;
+	    prop->propval.str = strdup(genre);
+	    proplist = add_mtp_prop_to_proplist(proplist, prop);
+	  }
+	  break;
 	}
-	break;
-      case PTP_OPC_Genre:
-	if (genre != NULL) {
-	  prop = new_mtp_prop_entry();
-	  prop->ObjectHandle = *newid;
-	  prop->property = PTP_OPC_Genre;
-	  prop->datatype = PTP_DTC_STR;
-	  prop->propval.str = strdup(genre);
-	  proplist = add_mtp_prop_to_proplist(proplist, prop);
-	}
-	break;
       }
+      ptp_free_objectpropdesc(&opd);
     }
     free(props);
 
@@ -5161,7 +5039,7 @@ static int create_new_abstract_list(LIBMTP_mtpdevice_t *device,
 	return -1;
       }
     }
-    
+
   }
 
   if (no_tracks > 0) {
@@ -5739,73 +5617,48 @@ int LIBMTP_Update_Album(LIBMTP_mtpdevice_t *device,
   if (ptp_operation_issupported(params,PTP_OC_MTP_SetObjPropList)) {
     MTPPropList *proplist = NULL;
     MTPPropList *prop = NULL;
-    PTPObjectPropDesc opd;
     
     for (i=0;i<propcnt;i++) {
-      switch (props[i]) {
-      case PTP_OPC_Name:
-	ret = ptp_mtp_getobjectpropdesc(params, PTP_OPC_Name, PTP_OFC_MTP_AbstractAudioAlbum, &opd);
-	if (ret != PTP_RC_OK) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Album(): "
-				  "could not get property description for PTP_OPC_Name.");
-	  break;
-	}
-        
-	if (opd.GetSet) {
+      PTPObjectPropDesc opd;
+
+      ret = ptp_mtp_getobjectpropdesc(params, props[i], PTP_OFC_MTP_AbstractAudioAlbum, &opd);
+      if (ret != PTP_RC_OK) {
+	add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Album(): "
+				"could not get property description.");
+      } else if (opd.GetSet) {
+	switch (props[i]) {
+	case PTP_OPC_Name:
 	  prop = new_mtp_prop_entry();
 	  prop->ObjectHandle = metadata->album_id;      
 	  prop->property = PTP_OPC_Name;
 	  prop->datatype = PTP_DTC_STR;
-    if (metadata->name != NULL)
-  	  prop->propval.str = strdup(metadata->name);
+	  if (metadata->name != NULL)
+	    prop->propval.str = strdup(metadata->name);
 	  proplist = add_mtp_prop_to_proplist(proplist, prop);
-	}
-	ptp_free_objectpropdesc(&opd);
-        
-	break;
-      case PTP_OPC_Artist:
-	ret = ptp_mtp_getobjectpropdesc(params, PTP_OPC_Artist, PTP_OFC_MTP_AbstractAudioAlbum, &opd);
-	if (ret != PTP_RC_OK) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Album(): "
-				  "could not get property description for PTP_OPC_Artist.");
 	  break;
-	}
-        
-	if (opd.GetSet) {
+	case PTP_OPC_Artist:
 	  prop = new_mtp_prop_entry();
 	  prop->ObjectHandle = metadata->album_id;      
 	  prop->property = PTP_OPC_Artist;
 	  prop->datatype = PTP_DTC_STR;
-    if (metadata->artist != NULL)
-      prop->propval.str = strdup(metadata->artist);
+	  if (metadata->artist != NULL)
+	    prop->propval.str = strdup(metadata->artist);
 	  proplist = add_mtp_prop_to_proplist(proplist, prop);
-	}
-	ptp_free_objectpropdesc(&opd);
-        
-	break;
-      case PTP_OPC_Genre:
-	ret = ptp_mtp_getobjectpropdesc(params, PTP_OPC_Genre, PTP_OFC_MTP_AbstractAudioAlbum, &opd);
-	if (ret != PTP_RC_OK) {
-	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Update_Album(): "
-				  "could not get property description for PTP_OPC_Genre.");
 	  break;
-	}
-        
-	if (opd.GetSet) {
+	case PTP_OPC_Genre:
 	  prop = new_mtp_prop_entry();
 	  prop->ObjectHandle = metadata->album_id;
 	  prop->property = PTP_OPC_Genre;
 	  prop->datatype = PTP_DTC_STR;
-    if (metadata->genre != NULL)
-      prop->propval.str = strdup(metadata->genre);
+	  if (metadata->genre != NULL)
+	    prop->propval.str = strdup(metadata->genre);
 	  proplist = add_mtp_prop_to_proplist(proplist, prop);
+	  break;
+	default:
+	  break;
 	}
-	ptp_free_objectpropdesc(&opd);
-        
-	break;
-      default:
-	break;
       }
+      ptp_free_objectpropdesc(&opd);
     }
     
     ret = ptp_mtp_setobjectproplist(params, proplist);

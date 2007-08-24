@@ -123,6 +123,9 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
   { "Samsung YP-F2J", 0x04e8, 0x5057, DEVICE_FLAG_UNLOAD_DRIVER },
   // Reported by Patrick <skibler@gmail.com>
   { "Samsung YP-K5", 0x04e8, 0x505a, DEVICE_FLAG_NO_ZERO_READS },
+  // From dev.local@gmail.com
+  // A bit suspicious about this, is this really the MTP mode?
+  { "Samsung YP-U3QB/XER", 0x04e8, 0x507c, DEVICE_FLAG_NONE },
   // From m.eik michalke
   { "Samsung YP-U3", 0x04e8, 0x507d, DEVICE_FLAG_NONE },
   // Reported by Matthew Wilcox <matthew@wil.cx>
@@ -334,7 +337,8 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
    */
   // From: Mitchell Hicks <mitchix@yahoo.com>
   {"Nokia 5300 Mobile Phone", 0x0421, 0x04ba, DEVICE_FLAG_NONE },
-  {"Some Nokia Mobile Phone (MTP mode)", 0x0421, 0x04e1, DEVICE_FLAG_NONE },
+  // From Swapan <swapan@yahoo.com>
+  {"Nokia N75 Mobile Phone", 0x0421, 0x04e1, DEVICE_FLAG_NONE },
   // From: Pat Nicholls <pat@patandannie.co.uk>
   {"Nokia N80 Internet Edition (Media Player)", 0x0421, 0x04f1, DEVICE_FLAG_UNLOAD_DRIVER },
 
