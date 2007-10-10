@@ -55,9 +55,10 @@ int main (int argc, char **argv)
   extern char *optarg;
   char *udev_action = NULL;
   char default_udev_action[] = "SYMLINK+=\"libmtp-%k\", MODE=\"666\"";
-  uint16_t last_vendor = 0x0000U;
+  char *action; // To hold the action actually used.
+  uint16_t last_vendor = 0x0000U;  
 
-  while ( (opt = getopt(argc, argv, "uiHa:")) != -1 ) {
+  while ( (opt = getopt(argc, argv, "uUiHa:")) != -1 ) {
     switch (opt) {
     case 'a':
       udev_action = strdup(optarg);
@@ -75,6 +76,12 @@ int main (int argc, char **argv)
     }
   }
 
+  if (udev_action != NULL) {
+    action = udev_action;
+  } else {
+    action = default_udev_action;
+  }
+
   LIBMTP_Init();
   ret = LIBMTP_Get_Supported_Devices_List(&entries, &numentries);
   if (ret == 0) {
@@ -82,12 +89,13 @@ int main (int argc, char **argv)
     case style_udev:
       printf("# UDEV-style hotplug map for libmtp\n");
       printf("# Put this file in /etc/udev/rules.d\n\n");
-      printf("ACTION!=\"add\", GOTO=\"libmtp_rules_end\"\n"
-	     "SUBSYSTEM==\"usb\", GOTO=\"libmtp_rules\"\n"
-	     "# The following line will be deprecated when older kernels are phased out.\n"
-             "SUBSYSTEM==\"usb_device\", GOTO=\"libmtp_rules\"\n\n"
+      printf("ACTION!=\"add\", GOTO=\"libmtp_rules_end\"\n");
+      printf("ATTR{dev}!=\"?*\", GOTO=\"libmtp_rules_end\"\n");
+      printf("SUBSYSTEM==\"usb\", GOTO=\"libmtp_usb_rules\"\n"
+	     "# The following thing will be deprecated when older kernels are phased out.\n"
+             "SUBSYSTEM==\"usb_device\", GOTO=\"libmtp_usb_device_rules\"\n"
 	     "GOTO=\"libmtp_rules_end\"\n\n"
-	     "LABEL=\"libmtp_rules\"\n\n");
+	     "LABEL=\"libmtp_usb_rules\"\n\n");
       break;
     case style_usbmap:
       printf("# This usermap will call the script \"libmtp.sh\" whenever a known MTP device is attached.\n\n");
@@ -109,21 +117,16 @@ int main (int argc, char **argv)
       LIBMTP_device_entry_t * entry = &entries[i];
 
       switch (style) {
-        case style_udev: {
-          char *action;
+      case style_udev: 
+	{
           printf("# %s\n", entry->name);
-          if (udev_action != NULL) {
-            action = udev_action;
-          } else {
-            action = default_udev_action;
-          }
 	  // Old style directly SYSFS named.
-          // printf("SYSFS{idVendor}==\"%04x\", SYSFS{idProduct}==\"%04x\", %s\n", entry->vendor_id, entry->product_id, action);
+	  // printf("SYSFS{idVendor}==\"%04x\", SYSFS{idProduct}==\"%04x\", %s\n", entry->vendor_id, entry->product_id, action);
 	  // Newer style
 	  printf("ATTR{idVendor}==\"%04x\", ATTR{idProduct}==\"%04x\", %s\n", entry->vendor_id, entry->product_id, action);
-        break;
+	  break;
         }
-        case style_usbmap:
+      case style_usbmap:
           printf("# %s\n", entry->name);
           printf("libmtp.sh    0x0003  0x%04x  0x%04x  0x0000  0x0000  0x00    0x00    0x00    0x00    0x00    0x00    0x00000000\n", entry->vendor_id, entry->product_id);
           break;
@@ -174,11 +177,26 @@ int main (int argc, char **argv)
     exit(1);
   }
 
+  // For backward comparibility with the #$!+@! ever changing
+  // udev rule style...
+  if (style == style_udev) {
+    printf("GOTO=\"libmtp_rules_end\"\n\n");
+    printf("LABEL=\"libmtp_usb_device_rules\"\n");
+    for (i = 0; i < numentries; i++) {
+      LIBMTP_device_entry_t * entry = &entries[i];
+
+      printf("# %s\n", entry->name);
+      printf("ATTRS{idVendor}==\"%04x\", ATTRS{idProduct}==\"%04x\", %s\n", entry->vendor_id, entry->product_id, action); 
+    }
+    printf("GOTO=\"libmtp_rules_end\"\n\n");
+  }
+
+  // Then the footer.
   switch (style) {
   case style_usbmap:
     break;
   case style_udev:
-    printf("\nLABEL=\"libmtp_rules_end\"\n");
+    printf("LABEL=\"libmtp_rules_end\"\n");
     break;
   case style_hal:
     printf("    </match>\n");

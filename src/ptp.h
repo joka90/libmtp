@@ -492,6 +492,7 @@ typedef struct _PTPIPHeader PTPIPHeader;
 #define PTP_ERROR_DATA_EXPECTED		0x02FE
 #define PTP_ERROR_RESP_EXPECTED		0x02FD
 #define PTP_ERROR_BADPARAM		0x02FC
+#define PTP_ERROR_CANCEL		0x02FB
 
 /* PTP Event Codes */
 
@@ -773,14 +774,13 @@ union _PTPPropertyValue {
 typedef union _PTPPropertyValue PTPPropertyValue;
 
 /* Metadata lists for MTP operations */
-struct _MTPPropList {
+struct _MTPProperties {
 	uint16_t 	 	property;
 	uint16_t 	 	datatype;
 	uint32_t 	 	ObjectHandle;
 	PTPPropertyValue 	propval;
-	struct _MTPPropList 	*next;
 };
-typedef struct _MTPPropList MTPPropList;
+typedef struct _MTPProperties MTPProperties;
 
 struct _PTPPropDescRangeForm {
 	PTPPropertyValue 	MinimumValue;
@@ -1473,6 +1473,8 @@ typedef uint16_t (* PTPIOSendData)	(PTPParams* params, PTPContainer* ptp,
 typedef uint16_t (* PTPIOGetResp)	(PTPParams* params, PTPContainer* resp);
 typedef uint16_t (* PTPIOGetData)	(PTPParams* params, PTPContainer* ptp,
 	                                 PTPDataHandler *putter);
+typedef uint16_t (* PTPIOCancelReq)	(PTPParams* params, uint32_t transaction_id);
+
 /* debug functions */
 typedef void (* PTPErrorFunc) (void *data, const char *format, va_list args)
 #if (__GNUC__ >= 3)
@@ -1497,6 +1499,7 @@ struct _PTPParams {
 	PTPIOGetData	getdata_func;
 	PTPIOGetResp	event_check;
 	PTPIOGetResp	event_wait;
+	PTPIOCancelReq	cancelreq_func;
 
 	/* Custom error and debug function */
 	PTPErrorFunc	error_func;
@@ -1514,7 +1517,8 @@ struct _PTPParams {
 	int		split_header_data;
 
 	/* PTP: MTP specific structure. */
-	MTPPropList	*proplist;
+	MTPProperties	*props;
+	int		nrofprops;
 
 	/* PTP: internal structures used by ptp driver */
 	PTPObjectHandles handles;
@@ -1561,6 +1565,7 @@ uint16_t ptp_usb_event_wait	(PTPParams* params, PTPContainer* event);
 uint16_t ptp_usb_control_get_extended_event_data (PTPParams *params, char *buffer, int *size);
 uint16_t ptp_usb_control_device_reset_request (PTPParams *params);
 uint16_t ptp_usb_control_get_device_status (PTPParams *params, char *buffer, int *size);
+uint16_t ptp_usb_control_cancel_request (PTPParams *params, uint32_t transid);
 
 
 int      ptp_ptpip_connect	(PTPParams* params, const char *port);
@@ -1636,10 +1641,10 @@ uint16_t ptp_mtp_setobjectpropvalue (PTPParams* params, uint32_t oid, uint16_t o
 				PTPPropertyValue *value, uint16_t datatype);
 uint16_t ptp_mtp_getobjectreferences (PTPParams* params, uint32_t handle, uint32_t** ohArray, uint32_t* arraylen);
 uint16_t ptp_mtp_setobjectreferences (PTPParams* params, uint32_t handle, uint32_t* ohArray, uint32_t arraylen);
-uint16_t ptp_mtp_getobjectproplist (PTPParams* params, uint32_t handle, MTPPropList **proplist);
+uint16_t ptp_mtp_getobjectproplist (PTPParams* params, uint32_t handle, MTPProperties **props, int *nrofprops);
 uint16_t ptp_mtp_sendobjectproplist (PTPParams* params, uint32_t* store, uint32_t* parenthandle, uint32_t* handle,
-				     uint16_t objecttype, uint64_t objectsize, MTPPropList *proplist);
-uint16_t ptp_mtp_setobjectproplist (PTPParams* params, MTPPropList *proplist);
+				     uint16_t objecttype, uint64_t objectsize, MTPProperties *props, int nrofprops);
+uint16_t ptp_mtp_setobjectproplist (PTPParams* params, MTPProperties *props, int nrofprops);
 
 /* Eastman Kodak extensions */
 uint16_t ptp_ek_9007 (PTPParams* params, unsigned char **serial, unsigned int *size);

@@ -1,3 +1,204 @@
+2007-10-04  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.c: rm some pointless confusing defines
+	  inherited from libgphoto2.
+	* configure.ac: bump to 0.2.2
+	* src/Makefile.am: interface to libmtp.so.6.0.2 (compatible)
+	* Release as 0.2.2. Now is as good time as ever. Release
+	  early and release often.
+	
+2007-10-03  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.c: tag the OLD Creative devices with
+	  DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL, after clear
+	  indications that it was broken when retrieveing folders
+	  on all those devices. The newer devices (those supporting
+	  32bit object size) presumably does not have this limitation.
+
+2007-10-02  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: devices which represented file size with a
+	  32bit value (some Creative devices) would return a bananas
+	  file size. Fixed it up by...
+	* src/libmtp.h.in: recycling the uint8_t "interface" 
+	  field in the device struct as a holder of the object size 
+	  for the device. This will make the new library binary 
+	  compatible with version 0.2.1 since no-one should *ever* 
+	  dereference that value (which used to be the USB interface 
+	  number and is now the object size).
+	* examples/files.c: display 64bit file sizes in hex correctly.
+
+2007-09-29  Richard Low <richard@wentnet.com>
+
+	* src/libmtp.c: avoid crash on failed connect
+
+2007-09-28  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.h: introduce a new device flag for devices that
+	  have broken PTP headers, first encountered on the Creative
+	  ZEN 8GB.
+	* src/libusb-glue.c: attempt to begin to work around the broken
+	  PTP headers.
+
+2007-09-25  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.h: add a new device flag for devices that don't
+	  like it if you release the interface (or try to clear endpoints).
+	* src/libusb-glue.c: dito, implement this flag, tag all SanDisk
+	  Sansa devices with it except for the Linux-based Sansa Connect.
+
+2007-09-23  Richard Low <richard@wentnet.com>
+
+	* src/libusb-glue.c: updated some device flags, removed second
+	  call to ptp_getdeviceinfo
+	* src/libmtp.c: property cache fixes
+
+2007-09-23  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: wrapped updating of playlists and albums into an
+	  abstract function so we do it consistently. Added support for
+	  tagging on modification date to files, tracks, playlists and
+	  albums.
+
+2007-09-21  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.c: flag the Samsung YH-820 with
+	  DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL after tests by Stephan
+	  Fabel.
+	
+2007-09-18  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.c: stop the endpoint unhalting/unstalling when
+	  closing the USB device. It was AYBABTU the Samsungs 
+	  (and others).
+
+2007-09-17  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.c: silenced weirdo error message.
+
+2007-09-16  Linus Walleij <triad@df.lth.se>
+
+	* src/ptp.c: cancellation working *as it should*
+	* src/ptp.h: dito.
+	* src/libusb-glue.c: dito.
+	* src/libusb-glue.h: dito.
+	* src/libmtp.c: dito.
+	* src/libmtp.h.in: new error code for cancellation.
+
+2007-09-16  Richard Low <richard@wentnet.com>
+
+	* src/libusb-glue.c: only read descriptors for devices we
+	  don't know since it breaks on some devices
+	* src/libmtp.c: a couple of bugs fixed in metadata retreival
+
+2007-09-15  Linus Walleij <triad@df.lth.se>
+
+	* src/ptp.c: get cancellation of xfers working.
+	* src/libusb-glue.c: dito.
+	* src/libusb-glue.h: dito.
+	* src/libmtp.c: dito.
+
+2007-09-14  Linus Walleij <triad@df.lth.se>
+
+	* src/ptp.h: sync in upstream to get cancellation prototypes.
+	* src/libusb-glue.c: first try to implement cancellation.
+	* src/libmtp.c: dito. Bugfix to one of Marcus' realloc():s.
+
+2007-09-12  Marcus Meissner <meissner@suse.de>
+
+	* src/ptp-pack.c: sync to upstream, rewrote packing to use
+	  a static array to be qsort():ed when reading in proplists.
+	* src/ptp.c: reflect changes.
+	* src/ptp.h: reflect changes.
+	* src/libmtp.c: reflect changes.
+	
+2007-09-06  Linus Walleij <triad@df.lth.se>
+
+	* examples/hotplug.c: edit up into a udev ruleset that is
+	  inexorably complicated but probably compatible with most
+	  udev versions out there. Now please DON'T update udev
+	  styles again!
+
+2007-09-05  Richard Low <richard@wentnet.com>
+
+	* src/libmtp.c: album fixups
+
+2007-09-05  Linus Walleij <triad@df.lth.se>
+
+	* examples/hotplug.c: use old udev style by default, use new
+	  if requested explicitly by a -U switch.
+
+2007-09-04  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: make sure we query recursively supplying each
+	  storage ID in turn, so we spin over storages. Also check
+	  what storage may be available to store a file, if the first
+	  one fails, try the next!
+
+2007-09-01  Linus Walleij <triad@df.lth.se>
+
+	* src/ptp-pack.c: make the resulting MTP proplist sorted by
+	  object ID.
+	* hotplug.sh.in: explicitly call BASH instead of just sh. Warn
+	  if script is not run as root.
+	
+2007-08-29  Linus Walleij <triad@df.lth.se>
+
+	* examples/Makefile.am: move include define from AM_CFLAGS to
+	  AM_CPPFLAGS (as it should be) bug found by Petar Petrov 
+	  <pesho.petrov@gmail.com>.
+	* src/libusb-glue.c: strange misleading message corrected. Fix
+	  up the horrid interface passing back-and-forward and confusing.
+	* src/libusb-glue.h: dito.
+	* src/libmtp.c: rid interface references, that's a USB issue!
+	* src/libmtp.h.in: flag interface number in device struct as retired.
+
+2007-08-28  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: retire the horrid, broken, stream send facility that
+	  does not work on any device since they all want to know the file
+	  size in advance. Add in some code to fall back on the recursive
+	  metadata retrieveal if getting the whole long list fails.
+	* src/libusb-glue.c: tag all Sansas as having broken GetObjectPropList
+	  when all tags for all objects are requested. Scan each INTERFACE 
+	  of the device for device descriptors.
+
+2007-08-24  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.h: new device flag to strip all non-7bit chars from
+	  filenames on some lame devices.
+	* src/libusb-glue.c: tag the Philips Shoqbox with this flag.
+	* src/libmtp.c: strip the non-7bit chars from filenames if that
+	  flag is set.
+	* src/unicode.h: introduce a 7bit-strip helper function.
+	* src/unicode.c: dito.
+
+2007-08-22  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: deal with setting of metadata sets for u16/u32:s that
+	  are ranges or enums, rounding and twiddling if need be. This is
+	  needed because some new devices (like the TrekStor Sweez,
+	  has duration defined as a range: MIN 0, MAX 65535000, STEP 1
+	  and Sandisk Sansa c240 has duration as range: MIN 0, MAX 2147483000, 
+	  STEP 1000) whereas old devices would just accept any value.
+
+2007-08-16  Richard Low <richard@wentnet.com>
+
+	* src/ptp-pack.c: allow packing of NULL strings
+
+2007-08-15  Robert Reardon <rreardon@monkshatch.vispa.com>
+
+	* src/libmtp.c: return device max values for representative
+	  samples.
+
+2007-08-15  Richard Low <richard@wentnet.com>
+
+	* src/libusb-glue.c: added Philips Shoqbox
+
+2007-08-13  Linus Walleij <triad@df.lth.se>
+
+	* src/ptp.c: sync to upstream.
+
 2007-08-07  Linus Walleij <triad@df.lth.se>
 
 	* configure.ac: bump to 0.2.1.

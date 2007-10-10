@@ -190,8 +190,12 @@ ptp_get_packed_stringcopy(PTPParams *params, char *string, uint32_t *packed_size
 	uint8_t packed[PTP_MAXSTRLEN*2+3], len;
 	size_t plen;
 	unsigned char *retcopy = NULL;
-
-	ptp_pack_string(params, string, (unsigned char*) packed, 0, &len);
+  
+	if (string == NULL)
+	  ptp_pack_string(params, "", (unsigned char*) packed, 0, &len);
+	else
+	  ptp_pack_string(params, string, (unsigned char*) packed, 0, &len);
+  
 	/* returned length is in characters, then one byte for string length */
 	plen = len*2 + 1;
 	
@@ -918,10 +922,10 @@ ptp_pack_DPV (PTPParams *params, PTPPropertyValue* value, unsigned char** dpvptr
 
 #define MAX_MTP_PROPS 127
 static inline uint32_t
-ptp_pack_OPL (PTPParams *params, MTPPropList *proplist, unsigned char** opldataptr)
+ptp_pack_OPL (PTPParams *params, MTPProperties *props, int nrofprops, unsigned char** opldataptr)
 {
 	unsigned char* opldata;
-	MTPPropList *propitr;
+	MTPProperties *propitr;
 	unsigned char *packedprops[MAX_MTP_PROPS];
 	uint32_t packedpropslens[MAX_MTP_PROPS];
 	uint32_t packedobjecthandles[MAX_MTP_PROPS];
@@ -933,8 +937,8 @@ ptp_pack_OPL (PTPParams *params, MTPPropList *proplist, unsigned char** opldatap
 	uint32_t i;
 
 	totalsize = sizeof(uint32_t); /* 4 bytes to store the number of elements */
-	propitr = proplist;
-	while (propitr != NULL && noitems < MAX_MTP_PROPS) {
+	propitr = props;
+	while (nrofprops-- && noitems < MAX_MTP_PROPS) {
 		/* Object Handle */
 		packedobjecthandles[noitems]=propitr->ObjectHandle;
 		totalsize += sizeof(uint32_t); /* Object ID */
@@ -948,7 +952,7 @@ ptp_pack_OPL (PTPParams *params, MTPPropList *proplist, unsigned char** opldatap
 	        packedpropslens[noitems] = ptp_pack_DPV (params, &propitr->propval, &packedprops[noitems], propitr->datatype);
 		totalsize += packedpropslens[noitems];
 		noitems ++;
-		propitr = propitr->next;
+		propitr ++;
 	}
 
 	/* Allocate memory for the packed property list */
@@ -975,44 +979,48 @@ ptp_pack_OPL (PTPParams *params, MTPPropList *proplist, unsigned char** opldatap
 	return totalsize;
 }
 
+static int
+_compare_func(const void* x, const void *y) {
+	const MTPProperties *px = x;
+	const MTPProperties *py = y;
+
+	return px->ObjectHandle - py->ObjectHandle;
+}
+
 static inline int
-ptp_unpack_OPL (PTPParams *params, unsigned char* data, MTPPropList **proplist, unsigned int len)
+ptp_unpack_OPL (PTPParams *params, unsigned char* data, MTPProperties **pprops, unsigned int len)
 { 
 	uint32_t prop_count = dtoh32a(data);
-	MTPPropList *prop = NULL;
+	MTPProperties *props = NULL;
 	int offset = 0, i;
 
 	if (prop_count == 0) {
-		*proplist = NULL;
+		*pprops = NULL;
 		return 0;
 	}
 	data += sizeof(uint32_t);
-	*proplist = malloc(sizeof(MTPPropList));
-	prop = *proplist;
+	props = malloc(prop_count * sizeof(MTPProperties));
+	if (!props) return 0;
 	for (i = 0; i < prop_count; i++) {
-		prop->ObjectHandle = dtoh32a(data);
+		props[i].ObjectHandle = dtoh32a(data);
 		data += sizeof(uint32_t);
 		len -= sizeof(uint32_t);
 
-		prop->property = dtoh16a(data);
+		props[i].property = dtoh16a(data);
 		data += sizeof(uint16_t);
 		len -= sizeof(uint16_t);
 
-		prop->datatype = dtoh16a(data);
+		props[i].datatype = dtoh16a(data);
 		data += sizeof(uint16_t);
 		len -= sizeof(uint16_t);
 
 		offset = 0;
-		ptp_unpack_DPV(params, data, &offset, len, &prop->propval, prop->datatype);
+		ptp_unpack_DPV(params, data, &offset, len, &props[i].propval, props[i].datatype);
 		data += offset;
 		len -= offset;
-
-		if (i != prop_count - 1) {
-			prop->next = malloc(sizeof(MTPPropList));
-			prop = prop->next;
-		} else
-			prop->next = NULL;
 	}
+	qsort (props, prop_count, sizeof(MTPProperties),_compare_func);
+	*pprops = props;
 	return prop_count;
 }
 

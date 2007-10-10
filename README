@@ -114,20 +114,6 @@ now (2007-08-04). See the "last resort" solutions below
 if you really need to get your dual-mode device to work 
 with MTP.
 
-If your device is very problematic we are curious of how it
-works under Windows, so we enjoy reading USB packet sniffs
-that reveal the low-level traffic carried out between
-Windows Media Player and your device. This can be done 
-using the trial version of HHD Softwares software-only
-USB monitor. You need to get a copy of version 2.37 since
-the newer trial versions won't let you carry out the 
-needed packet sniffs. (As of 2007-03-10 a copy can be found
-at: http://www.cobbleware.com/files/usb-monitor-237.exe)
-There are other USB monitors as well, some more expensive
-alternatives use hardware and even measure electronic
-characteristics of the traffic (which is far too much 
-detail for us).
-
 If you are a device vendor, please consider assigning one 
 of your employees as a contact person for libmtp, have them
 sign up to the libmtp development list and answer questions
@@ -136,6 +122,109 @@ mailing list. By the way: do you have spare devices you
 can give us? Send them to Richard (Mac support) or Linus
 (Linux support). (So far nobody did that except for Microsoft
 who sent us a Zune by proxy!)
+
+If your device is very problematic we are curious of how it
+works under Windows, so we enjoy reading USB packet sniffs
+that reveal the low-level traffic carried out between
+Windows Media Player and your device. This can be done 
+using e.g.:
+
+* USBsnoop:
+  http://benoit.papillault.free.fr/usbsnoop/
+
+* The trial version of HHD Softwares software-only
+  USB monitor. You need to get a copy of version 2.37 since
+  the newer trial versions won't let you carry out the 
+  needed packet sniffs. (As of 2007-03-10 a copy can be found
+  at: http://www.cobbleware.com/files/usb-monitor-237.exe)
+
+There are other USB monitors as well, some more expensive
+alternatives use hardware and even measure electronic
+characteristics of the traffic (which is far too much 
+detail for us).
+
+Device sniffs are an easy read since the PTP/MTP protocol
+is nicely structured. All commands will have a structure such
+as this in the log, we examplify with a object list request:
+
+PTP REQEUST:
+000120: Bulk or Interrupt Transfer (UP), 03.09.2007 12:49:25.9843750 +0.0
+Pipe Handle: 0x863ce234 (Endpoint Address: 0x2)
+Send 0x20 bytes to the device:
+ 20 00 00 00 01 00 05 98 23 00 00 00 27 03 00 10    ......?#...'...
+ Length      TYPE  CMD   Trans#      Param1
+
+ 00 00 00 00 02 DC 00 00 00 00 00 00 00 00 00 00   .....Ü..........
+ Param2      Param3      Param4      Param5
+
+[OPTIONAL] DATA PHASE:
+000121: Bulk or Interrupt Transfer (UP), 03.09.2007 12:49:26.0 +0.0156250
+Pipe Handle: 0x863ce214 (Endpoint Address: 0x81)
+Get 0x1a bytes from the device:
+ 1A 00 00 00 02 00 05 98 23 00 00 00 01 00 00 00   .......?#.......
+ Length      TYPE  CMD   Trans#      DATA
+
+ 27 03 00 10 02 DC 04 00 00 30                     '....Ü...0
+
+RESPONSE:
+000122: Bulk or Interrupt Transfer (UP), 03.09.2007 12:49:26.0 +0.0
+Pipe Handle: 0x863ce214 (Endpoint Address: 0x81)
+Get 0xc bytes from the device:
+ 0C 00 00 00 03 00 01 20 23 00 00 00               ....... #...
+ Length      TYPE  CODE  Trans#
+
+* One send (OUT to the device), two reads (IN from the device).
+
+* All three byte chunks commands are 
+  sent/recieved/recieeved by the function  ptp_transaction() 
+  in the file ptp.c.
+
+* It boils down to ptp_usb_sendreq(), optionally ptp_usb_senddata() 
+  or ptp_usb_getdata() and finally ptp_usb_getresp() in the file 
+  libusb-glue.c. Notice ptp_usb_sendreq() and ptp_usb_getresp()
+  are ALWAYS called. The TYPE field correspond to this, so the
+  TYPES in this case are "COMMAND" (0x0001), "DATA" (0x0002), 
+  and "RESPONSE" (0x0003).
+
+* Notice that the byte order is little endian, so you need to read
+  each field from right to left.
+
+* This COMMAND has:
+  CMD 0x99805, we see in ptp.h that this is PTP_OC_MTP_GetObjPropList.
+  Transaction# 0x00000023.
+  REQUEST parameters 0x10000327, 0x00000000, 0x0000DC02, 0x00000000
+    0x00000000, in this case it means "get props for object 0x10000327",
+    "any format", "property 0xDC02" (PTP_OPC_ObjectFormat), then two
+    parameters that are always zero (no idea what they mean or their
+    use).
+
+* The DATA has:
+  CMD 0x99805, we see in ptp.h that this is PTP_OC_MTP_GetObjPropList.
+  Transaction# 0x00000023.
+  Then comes data 0x00000001, 0x10000327, 0xDC02, 0x0004, 0x3000
+  Which means in this case, (and this is the tricky part) "here
+  you have 1 property", "for object 0x10000327", "it is property
+  0xDC02" (PTP_OPC_ObjectFormat), "which is of type 0x0004"
+  (PTP_DTC_UINT16), "and set to 0x3000" (PTP_OFC_Undefined, it
+  is perfectly valid to have undefined object formats, since it
+  is a legal value defining this).
+
+* This RESPONSE has:
+  CMD 0x99805, we see in ptp.h that this is PTP_OC_MTP_GetObjPropList.
+  Return Code ("RC") = 0x2001, PTP_RC_OK, all went fine.
+  Transaction# 0x00000023.  
+
+If you want to compare the Windows behaviour with a similar
+operation using libmtp you can go into the libusb-glue.c file
+and uncomment the row that reads:
+
+//#define ENABLE_USB_BULK_DEBUG
+
+(I.e. remove the two //.)
+
+This will make libmtp print out a hex dump of every bulk USB
+transaction. The bulk transactions contain all the PTP/MTP layer
+data, which is usually where the problems appear.
 
 
 Devices does not work - last resort:
@@ -149,7 +238,14 @@ it DOES release it but the device will immediately be probed
 at the USB mass storage interface AGAIN because it 
 enumerates.)
 
-Try this, if you have a recent 2.6.x Linux kernel:
+Try this, if you have a recent 2.6.x Linux kernel,
+run (as root) something like:
+
+> rmmod usb_storage ; mtp-detect
+
+You can run most any command or a client like gnomad2 or
+Amarok immediately after the rmmod command. This works 
+sometimes. Another way:
 
 * Edit /etc/modprobe.d/blacklist
 
@@ -168,14 +264,6 @@ If not even blacklisting works (check with
 something else and you may need to remove or rename the file 
 /lib/modules/<VERSION>/kernel/drivers/usb/storage/usb-storage.ko
 manually.
-
-Another method is to run (as root) something like:
-
-> rmmod usb_storage ; mtp-detect
-
-You can run most any command or a client like gnomad2 or
-Amarok immediately after the rmmod command. This works 
-sometimes.
 
 If you find the PerfectSolution(TM) to this dilemma, so you 
 can properly switch for individual devices whether to use it
@@ -269,10 +357,21 @@ cannot test your solution.
   problematic. Please upgrade to as new firmware as you can get.
   (Yes this requires some kind of Windows Installation I think.)
 
-* Very few devices that implement GetObjectPropList (0x9805) will
-  return the entire object list if you request a list for object
-  0xffffffffu. (But they should.) So we're currently not using 
-  that feature.
+* Some devices that implement GetObjectPropList (0x9805) will
+  not return the entire object list if you request a list for object
+  0xffffffffu. (But they should.) So they may need the special
+  DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL.
+
+* Some (smaller) subset of devices cannot even get all the 
+  properties for a single object in one go, these need the
+  DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST. Currently only the
+  iriver devices seem to have this bug.
+
+* The Toshiba Gigabeat S (and probably its sibling the 
+  Microsoft Zune and other Toshiba devices) will only display
+  album information tags for a song in case there is also
+  an abstract album (created with the album interface) with
+  the exact same name.
 
 
 Lost symbols

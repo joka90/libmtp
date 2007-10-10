@@ -76,8 +76,10 @@ To build the package:
 By default, libmtp will add the program-prefix "mtp-" to all the
 example programs prior to installation. The program-prefix option
 makes libmtp sample programs avoid collision with other programs like
-sox' "play" program. On Linux you should then typically type (see
-below for details):
+sox' "play" program. If the default prefix for some reason fail,
+try to tag on "--program-prefix=mtp-" to the "configure" command.
+
+On Linux you should then typically type (see below for details):
 
    % ./hotplug.sh
 
@@ -166,3 +168,20 @@ has write access on  /proc/bus/usb/*
 
 You can find the Linux hotplug project at:
 http://linux-hotplug.sourceforge.net/
+
+
+Compilation for embedded devices
+--------------------------------
+
+Problems with Autoconf complaining about a missing malloc() function
+during cross-compilation can be solved with this hack if you're using
+glibc:
+
+  % export ac_cv_func_malloc_0_nonnull=yes
+  % ./configure
+
+If you're using uclibc you may have to smack in a custom rpl_malloc()
+function in your program, see the Autoconf texinfo documentation.
+
+See further:
+http://wiki.buici.com/wiki/Autoconf_and_RPL_MALLOC
