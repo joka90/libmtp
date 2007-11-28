@@ -83,23 +83,23 @@ New Devices
 
 If you happen upon a device which libmtp claims it cannot
 autodetect, please submit the vendor ID and device ID 
-as a bug, patch or feature request on the Sourceforge
-bug tracker at our homepage. If it gives a sensible 
-output from "mtp-detect" then please attach the result as
-well as it teach us some stuff about your device. If you've
-done some additional hacking, join our mailinglist and
-post your experiences there.
+(these can be obtained from the "lsusb" and "lsusb -n"
+commands run as root) as a bug, patch or feature request 
+on the Sourceforge bug tracker at our homepage. If it 
+gives a sensible  output from "mtp-detect" then please attach 
+the result as well as it teach us some stuff about your 
+device. If you've done some additional hacking, join our 
+mailinglist and post your experiences there.
 
 If you want to be able to hack some more and you're not
 afraid of C hacking, add an entry for your device's 
 vendor/product ID and a descriptive string to the database 
-in the file src/libusb-glue.c. It is close to the top of the 
-file.
+in the file src/music-players.h.
 
 If you want to poke around to see if your device has some
 special pecularities, you can test some special device
-flags (defined in src/libusb-glue.h) by inserting them
-together with your device entry in src/libusb-glue.c.
+flags (defined in src/device-flags.h) by inserting them
+together with your device entry in src/music-players.h.
 Flags can be tested in isolation or catenated with "|"
 (binary OR). If relatives to your device use a certain
 flag, chances are high that a new device will need it
@@ -113,6 +113,11 @@ really work: this is a problem being tracked as of
 now (2007-08-04). See the "last resort" solutions below
 if you really need to get your dual-mode device to work 
 with MTP.
+
+Another flag which is easy to identify is the
+DEVICE_FLAG_NO_ZERO_READS, which remedies connection
+timeouts when getting files, and some timeouts on e.g. 
+successive "mtp-connect" calls.
 
 If you are a device vendor, please consider assigning one 
 of your employees as a contact person for libmtp, have them
@@ -215,8 +220,8 @@ Get 0xc bytes from the device:
   Transaction# 0x00000023.  
 
 If you want to compare the Windows behaviour with a similar
-operation using libmtp you can go into the libusb-glue.c file
-and uncomment the row that reads:
+operation using libmtp you can go into the src/libusb-glue.c 
+file and uncomment the row that reads:
 
 //#define ENABLE_USB_BULK_DEBUG
 

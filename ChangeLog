@@ -1,3 +1,55 @@
+2007-11-22  Linus Walleij <triad@df.lth.se>
+
+	* configure.ac: bump to 0.2.4.
+	* src/Makefile.am: bump age of soversion (compatible).
+	* RELEASE 0.2.4 mainly to get some new device support out there.
+
+2007-11-09  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.c: avoid probing deeper into interfaces
+	  that have a string describing them as "MTP" after a
+	  suggested patch from Alexander Kanavin <ak@sensi.org>.
+	* examples/albumart.c: patch from Chris Waters <xtifr@debian.org>
+	  replacing calls to atoi() with calls to strtoul(). Since
+	  object ID:s are unsigned long, atoi() would reject too
+	  high object IDs. The patch also fix a few memory leaks.
+	  THANKS DEBIAN! We love our downstream!
+	* examples/newplaylist.c: dito.
+	* examples/pathutils.c: dito.
+	* examples/thumb.c: dito.
+
+2007-11-05  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: use OPFF codes instead of DPFF codes,
+	  we're dealing with objects, not device props.
+	* src/ptp.c: silence some OPFF freeing warnings.
+
+2007-11-02  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.c: try to repair header here instead of
+	  ignoring error in ptp.c.
+	* src/music-players.h: flag some more Creative devices as
+	  broken getting all files.
+	* src/Makefile.am: reference the 2 new .h files.
+
+2007-10-31  Linus Walleij <triad@df.lth.se>
+
+	* src/ptp.c: bring cache handling into this file.
+	* src/ptp.h: dito.
+	* src/libmtp.c: consequential changes.
+
+2007-10-30  Linus Walleij <triad@df.lth.se>
+
+	* src/music-players.h: split this off as a shared file
+	  between us and libgphoto2 so we get out of the syncing
+	  nightmare.
+	* src/device-flags.h: split out this as well, Marcus
+	  might want it.
+	* src/libusb-glue.c: consequential movement.
+	* src/libmtp.c: reference new flag file.
+	* src/ptp.c: sync in upstream.
+	* src/ptp.h: dito.
+
 2007-10-25  Linus Walleij <triad@df.lth.se>
 
 	* Release 0.2.3. Nice bunch of cleaned-up code, sad we had
