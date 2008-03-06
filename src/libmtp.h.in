@@ -3,8 +3,9 @@
  * Interface to the Media Transfer Protocol library.
  *
  * Copyright (C) 2005-2007 Linus Walleij <triad@df.lth.se>
- * Copyright (C) 2005-2007 Richard A. Low <richard@wentnet.com>
- * Copyright (C) 2007 Ted Bullock
+ * Copyright (C) 2005-2008 Richard A. Low <richard@wentnet.com>
+ * Copyright (C) 2007 Ted Bullock <tbullock@canada.com>
+ * Copyright (C) 2008 Florent Mertens <flomertens@gmail.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -357,6 +358,7 @@ void LIBMTP_Release_Device_List(LIBMTP_mtpdevice_t*);
 void LIBMTP_Release_Device(LIBMTP_mtpdevice_t*);
 void LIBMTP_Dump_Device_Info(LIBMTP_mtpdevice_t*);
 int LIBMTP_Reset_Device(LIBMTP_mtpdevice_t*);
+char *LIBMTP_Get_Manufacturername(LIBMTP_mtpdevice_t*);
 char *LIBMTP_Get_Modelname(LIBMTP_mtpdevice_t*);
 char *LIBMTP_Get_Serialnumber(LIBMTP_mtpdevice_t*);
 char *LIBMTP_Get_Deviceversion(LIBMTP_mtpdevice_t*);
@@ -410,6 +412,8 @@ int LIBMTP_Get_Representative_Sample_Format(LIBMTP_mtpdevice_t *,
                         LIBMTP_filetype_t const,
                         LIBMTP_filesampledata_t **);
 int LIBMTP_Send_Representative_Sample(LIBMTP_mtpdevice_t *, uint32_t const,
+                          LIBMTP_filesampledata_t *);
+int LIBMTP_Get_Representative_Sample(LIBMTP_mtpdevice_t *, uint32_t const,
                           LIBMTP_filesampledata_t *);
 
 /**
@@ -483,6 +487,7 @@ int LIBMTP_Update_Album(LIBMTP_mtpdevice_t *, LIBMTP_album_t const * const);
  * @{
  */
 int LIBMTP_Delete_Object(LIBMTP_mtpdevice_t *, uint32_t);
+int LIBMTP_Set_Object_Filename(LIBMTP_mtpdevice_t *, uint32_t , char *);
 
 /** @} */
 

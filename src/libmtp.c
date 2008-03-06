@@ -1,10 +1,11 @@
 /**
  * \file libmtp.c
  *
- * Copyright (C) 2005-2007 Linus Walleij <triad@df.lth.se>
- * Copyright (C) 2005-2007 Richard A. Low <richard@wentnet.com>
+ * Copyright (C) 2005-2008 Linus Walleij <triad@df.lth.se>
+ * Copyright (C) 2005-2008 Richard A. Low <richard@wentnet.com>
  * Copyright (C) 2007 Ted Bullock <tbullock@canada.com>
  * Copyright (C) 2007 Tero Saarni <tero.saarni@gmail.com>
+ * Copyright (C) 2008 Florent Mertens <flomertens@gmail.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -1544,7 +1545,8 @@ static void flush_handles(LIBMTP_mtpdevice_t *device)
       device->default_organizer_folder =
 	params->handles.Handler[i];
     }
-    else if (!strcasecmp(oi->Filename, "ZENcast")) {
+    else if (!strcasecmp(oi->Filename, "ZENcast") ||
+	     !strcasecmp(oi->Filename, "Datacasts")) {
       device->default_zencast_folder = 
 	params->handles.Handler[i];
     }
@@ -1553,7 +1555,8 @@ static void flush_handles(LIBMTP_mtpdevice_t *device)
       device->default_album_folder = 
 	params->handles.Handler[i];
     }
-    else if (!strcasecmp(oi->Filename, "Text")) {
+    else if (!strcasecmp(oi->Filename, "Text") ||
+	     !strcasecmp(oi->Filename, "Texts")) {
       device->default_text_folder =
 	params->handles.Handler[i];
     }
@@ -2045,6 +2048,24 @@ int LIBMTP_Reset_Device(LIBMTP_mtpdevice_t *device)
     return -1;
   }
   return 0;
+}
+
+/**
+ * This retrieves the manufacturer name of an MTP device.
+ * @param device a pointer to the device to get the manufacturer name for.
+ * @return a newly allocated UTF-8 string representing the manufacturer name.
+ *         The string must be freed by the caller after use. If the call
+ *         was unsuccessful this will contain NULL.
+ */
+char *LIBMTP_Get_Manufacturername(LIBMTP_mtpdevice_t *device)
+{
+  char *retmanuf = NULL;
+  PTPParams *params = (PTPParams *) device->params;
+
+  if (params->deviceinfo.Manufacturer != NULL) {
+    retmanuf = strdup(params->deviceinfo.Manufacturer);
+  }
+  return retmanuf;
 }
 
 /**
@@ -2645,7 +2666,7 @@ LIBMTP_file_t *LIBMTP_Get_Filelisting(LIBMTP_mtpdevice_t *device)
 
 /**
  * This returns a long list of all files available
- * on the current MTP device. Typical usage:
+ * on the current MTP device. Folders will not be returned. Typical usage:
  *
  * <pre>
  * LIBMTP_file_t *filelist;
@@ -2839,6 +2860,10 @@ LIBMTP_file_t *LIBMTP_Get_Filelisting_With_Callback(LIBMTP_mtpdevice_t *device,
  * <code>LIBMTP_Get_Filelisting()</code> and cache the file, preferably
  * as an efficient data structure such as a hash list.
  *
+ * Incidentally this function will return metadata for
+ * a folder (association) as well, but this is not a proper use
+ * of it, it is intended for file manipulation, not folder manipulation.
+ *
  * @param device a pointer to the device to get the file metadata from.
  * @param fileid the object ID of the file that you want the metadata for.
  * @return a metadata entry on success or NULL on failure.
@@ -2866,12 +2891,6 @@ LIBMTP_file_t *LIBMTP_Get_Filemetadata(LIBMTP_mtpdevice_t *device, uint32_t cons
     }
 
     oi = &params->objectinfo[i];
-
-    if (oi->ObjectFormat == PTP_OFC_Association) {
-      // MTP use thesis object format for folders which means
-      // these "files" will turn up on a folder listing instead.
-      return NULL;
-    }
 
     // Allocate a new file type
     file = LIBMTP_new_file_t();
@@ -3658,6 +3677,11 @@ int LIBMTP_Get_Track_To_File_Descriptor(LIBMTP_mtpdevice_t *device,
  * @param device a pointer to the device to send the track to.
  * @param path the filename of a local file which will be sent.
  * @param metadata a track metadata set to be written along with the file.
+ *                 After this call the field <code>item_id</code>
+ *                 will contain the new track ID. Other fields such
+ *                 as the filename may also change during this operation
+ *                 due to device restrictions, so do not rely on the
+ *                 contents of this struct to be preserved in any way.
  * @param callback a progress indicator function or NULL to ignore.
  * @param data a user-defined pointer that is passed along to
  *             the <code>progress</code> function in order to
@@ -3729,7 +3753,10 @@ int LIBMTP_Send_Track_From_File(LIBMTP_mtpdevice_t *device,
  * @param fd the filedescriptor for a local file which will be sent.
  * @param metadata a track metadata set to be written along with the file.
  *                 After this call the field <code>item_id</code>
- *                 will contain the new track ID.
+ *                 will contain the new track ID. Other fields such
+ *                 as the filename may also change during this operation
+ *                 due to device restrictions, so do not rely on the
+ *                 contents of this struct to be preserved in any way.
  * @param callback a progress indicator function or NULL to ignore.
  * @param data a user-defined pointer that is passed along to
  *             the <code>progress</code> function in order to
@@ -3819,7 +3846,10 @@ int LIBMTP_Send_Track_From_File_Descriptor(LIBMTP_mtpdevice_t *device,
  * @param path the filename of a local file which will be sent.
  * @param filedata a file strtuct to pass in info about the file.
  *                 After this call the field <code>item_id</code>
- *                 will contain the new file ID.
+ *                 will contain the new file ID. Other fields such
+ *                 as the filename may also change during this operation
+ *                 due to device restrictions, so do not rely on the
+ *                 contents of this struct to be preserved in any way.
  * @param callback a progress indicator function or NULL to ignore.
  * @param data a user-defined pointer that is passed along to
  *             the <code>progress</code> function in order to
@@ -3893,7 +3923,10 @@ int LIBMTP_Send_File_From_File(LIBMTP_mtpdevice_t *device,
  * @param fd the filedescriptor for a local file which will be sent.
  * @param filedata a file strtuct to pass in info about the file.
  *                 After this call the field <code>item_id</code>
- *                 will contain the new track ID.
+ *                 will contain the new track ID. Other fields such
+ *                 as the filename may also change during this operation
+ *                 due to device restrictions, so do not rely on the
+ *                 contents of this struct to be preserved in any way.
  * @param callback a progress indicator function or NULL to ignore.
  * @param data a user-defined pointer that is passed along to
  *             the <code>progress</code> function in order to
@@ -4597,11 +4630,18 @@ int LIBMTP_Update_Track_Metadata(LIBMTP_mtpdevice_t *device,
 }
 
 /**
- * This function deletes a single file, track, playlist or
- * any other object off the MTP device,
- * identified by an object ID.
- * @param device a pointer to the device to delete the file or track from.
- * @param item_id the item to delete.
+ * This function deletes a single file, track, playlist, folder or
+ * any other object off the MTP device, identified by the object ID.
+ *
+ * If you delete a folder, there is no guarantee that the device will
+ * really delete all the files that were in that folder, rather it is
+ * expected that they will not be deleted, and will turn up in object
+ * listings with parent set to a non-existant object ID. The safe way
+ * to do this is to recursively delete all files (and folders) contained 
+ * in the folder, then the folder itself.
+ *
+ * @param device a pointer to the device to delete the object from.
+ * @param object_id the object to delete.
  * @return 0 on success, any other value means failure.
  */
 int LIBMTP_Delete_Object(LIBMTP_mtpdevice_t *device,
@@ -4616,6 +4656,107 @@ int LIBMTP_Delete_Object(LIBMTP_mtpdevice_t *device,
     return -1;
   }
 
+  return 0;
+}
+
+/**
+ * This function renames a single file, track, playlist, folder or
+ * any other object on the MTP device, identified by an object ID.
+ * This simply means that the PTP_OPC_ObjectFileName property
+ * is updated, if this is supported by the device.
+ *
+ * @param device a pointer to the device that contains the the file, 
+ *        track, foler, playlist or other object to set the filename for.
+ * @param object_id the ID of the object to rename.
+ * @param newname the new filename for this object. You MUST assume that
+ *        this string can be modified by the call to this function, since
+ *        some devices have restrictions as to which filenames may be
+ *        used on them.
+ * @return 0 on success, any other value means failure.
+ */
+int LIBMTP_Set_Object_Filename(LIBMTP_mtpdevice_t *device,
+			       uint32_t object_id, char *newname)
+{
+  PTPParams             *params = (PTPParams *) device->params;
+  PTP_USB               *ptp_usb = (PTP_USB*) device->usbinfo;
+  LIBMTP_file_t         *file;
+  uint16_t              ptp_type;
+  PTPObjectPropDesc     opd;
+  uint16_t              ret;
+
+  // Get metadata for this object.
+  file = LIBMTP_Get_Filemetadata(device, object_id);
+  if (file == NULL) {
+    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Set_Object_Filename(): "
+			    "could not get file metadata for target object.");
+    return -1;
+  }
+  ptp_type = map_libmtp_type_to_ptp_type(file->filetype);
+  LIBMTP_destroy_file_t(file);
+
+  // See if we can modify the filename on this kind of files.
+  ret = ptp_mtp_getobjectpropdesc(params, PTP_OPC_ObjectFileName, ptp_type, &opd);
+  if (ret != PTP_RC_OK) {
+    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Set_Object_Filename(): "
+			    "could not get property description.");
+    return -1;
+  }
+
+  if (!opd.GetSet) {
+    ptp_free_objectpropdesc(&opd);
+    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Set_Object_Filename(): "
+			    "property is not settable.");
+    // TODO: we COULD actually upload/download the object here, if we feel
+    //       like wasting time for the user.
+    return -1;
+  }
+
+  if (ptp_usb->device_flags & DEVICE_FLAG_ONLY_7BIT_FILENAMES) {
+    strip_7bit_from_utf8(newname);
+  }
+
+  if (ptp_operation_issupported(params, PTP_OC_MTP_SetObjPropList) &&
+      !(ptp_usb->device_flags & DEVICE_FLAG_BROKEN_SET_OBJECT_PROPLIST)) {
+    MTPProperties *props = NULL;
+    MTPProperties *prop = NULL;
+    int nrofprops = 0;
+    
+    prop = ptp_get_new_object_prop_entry(&props, &nrofprops);
+    prop->ObjectHandle = object_id;      
+    prop->property = PTP_OPC_ObjectFileName;
+    prop->datatype = PTP_DTC_STR;
+    prop->propval.str = strdup(newname);
+    
+    ret = ptp_mtp_setobjectproplist(params, props, nrofprops);
+    
+    ptp_destroy_object_prop_list(props, nrofprops);
+    
+    if (ret != PTP_RC_OK) {
+      add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Set_Oject_Filename(): "
+              "could not set object property list.");
+      ptp_free_objectpropdesc(&opd);
+      return -1;
+    }
+  } else if (ptp_operation_issupported(params, PTP_OC_MTP_SetObjectPropValue)) {
+    ret = set_object_string(device, object_id, PTP_OPC_ObjectFileName, newname);
+    if (ret != 0) {
+      add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Set_Oject_Filename(): "
+              "could not set object filename.");
+      ptp_free_objectpropdesc(&opd);
+      return -1;
+    }
+  } else {
+     add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Set_Oject_Filename(): "
+              "Your device doesn't seem to support any known way of setting metadata.");
+    ptp_free_objectpropdesc(&opd);
+    return -1;
+  }
+  
+  ptp_free_objectpropdesc(&opd);
+  
+  // update cached object properties if metadata cache exists
+  update_metadata_cache(device, object_id);
+  
   return 0;
 }
 
@@ -5818,7 +5959,7 @@ void LIBMTP_destroy_filesampledata_t(LIBMTP_filesampledata_t * sample)
  * playlists, but in theory any filetype could support representative
  * samples.
  * @param device a pointer to the device which is to be examined.
- * @param the filetype to examine, and return the representative sample
+ * @param filetype the fileype to examine, and return the representative sample
  *        properties for.
  * @param sample this will contain a new sample type with the fields
  *        filled in with suitable default values. For example, the
@@ -5940,10 +6081,9 @@ int LIBMTP_Get_Representative_Sample_Format(LIBMTP_mtpdevice_t *device,
  * TODO: there must be a way to find the max size for an ObjectPropertyValue.
  * @param device a pointer to the device which the object is on.
  * @param id unique id of the object to set artwork for.
- * @param data pointer to an array of uint8_t containing the representative 
- *        sample data.
- * @param size number of bytes in the sample.
+ * @param pointer to LIBMTP_filesampledata_t struct containing data
  * @return 0 on success, any other value means failure.
+ * @see LIBMTP_Get_Representative_Sample()
  * @see LIBMTP_Get_Representative_Sample_Format()
  * @see LIBMTP_Create_New_Album()
  */
@@ -6036,6 +6176,91 @@ int LIBMTP_Send_Representative_Sample(LIBMTP_mtpdevice_t *device,
     set_object_u32(device, id, PTP_OPC_RepresentativeSampleSize, sampledata->size);
     break;  		
   }
+    
+  return 0;
+}
+
+/**
+ * This routine gets representative sample data for an object.
+ * This uses the RepresentativeSampleData property of the album,
+ * if the device supports it.
+ * @param device a pointer to the device which the object is on.
+ * @param id unique id of the object to get data for.
+ * @param pointer to LIBMTP_filesampledata_t struct to receive data
+ * @return 0 on success, any other value means failure.
+ * @see LIBMTP_Send_Representative_Sample()
+ * @see LIBMTP_Get_Representative_Sample_Format()
+ * @see LIBMTP_Create_New_Album()
+ */
+int LIBMTP_Get_Representative_Sample(LIBMTP_mtpdevice_t *device,
+                          uint32_t const id,
+                          LIBMTP_filesampledata_t *sampledata)
+{
+  uint16_t ret;
+  PTPParams *params = (PTPParams *) device->params;
+  PTPPropertyValue propval;
+  PTPObjectInfo *oi;
+  uint32_t i;
+  uint16_t *props = NULL;
+  uint32_t propcnt = 0;
+  int supported = 0;
+
+  // get the file format for the object we're going to send representative data for
+  oi = NULL;
+  for (i = 0; i < params->handles.n; i++) {
+    if (params->handles.Handler[i] == id) {
+      oi = &params->objectinfo[i];
+      break;
+    }
+  }
+
+  if (oi == NULL) {
+    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Get_Representative_Sample(): could not get object info.");
+    return -1;
+  }
+
+  // check that we can store representative sample data for this object format
+  ret = ptp_mtp_getobjectpropssupported(params, oi->ObjectFormat, &propcnt, &props);
+  if (ret != PTP_RC_OK) {
+    add_ptp_error_to_errorstack(device, ret, "LIBMTP_Get_Representative_Sample(): could not get object properties.");
+    return -1;
+  }
+
+  for (i = 0; i < propcnt; i++) {
+    if (props[i] == PTP_OPC_RepresentativeSampleData) {
+      supported = 1;
+      break;
+    }
+  }
+  if (!supported) {
+    free(props);
+    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Get_Representative_Sample(): object type doesn't support RepresentativeSampleData.");
+    return -1;
+  }
+  free(props);
+  
+  // Get the data
+  ret = ptp_mtp_getobjectpropvalue(params,id,PTP_OPC_RepresentativeSampleData,
+				   &propval,PTP_DTC_AUINT8);
+  if (ret != PTP_RC_OK) {
+    add_ptp_error_to_errorstack(device, ret, "LIBMTP_Get_Representative_Sample(): could not get sample data.");
+    return -1;
+  }
+  
+  // Store it
+  sampledata->size = propval.a.count;
+  sampledata->data = malloc(sizeof(PTPPropertyValue) * propval.a.count);
+  for (i = 0; i < propval.a.count; i++) {
+    sampledata->data[i] = propval.a.v[i].u8;
+  }
+  free(propval.a.v);
+
+  // Get the other properties  
+  sampledata->width = get_u32_from_object(device, id, PTP_OPC_RepresentativeSampleWidth, 0);
+  sampledata->height = get_u32_from_object(device, id, PTP_OPC_RepresentativeSampleHeight, 0);
+  sampledata->duration = get_u32_from_object(device, id, PTP_OPC_RepresentativeSampleDuration, 0);
+  sampledata->filetype = map_ptp_type_to_libmtp_type(
+        get_u16_from_object(device, id, PTP_OPC_RepresentativeSampleFormat, LIBMTP_FILETYPE_UNKNOWN));
     
   return 0;
 }

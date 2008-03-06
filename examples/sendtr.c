@@ -5,10 +5,11 @@
  * based on Enrique Jorreto Ledesma's work on the original program by 
  * Shaun Jackman and Linus Walleij.
  *
- * Copyright (C) 2003-2007 Linus Walleij <triad@df.lth.se>
+ * Copyright (C) 2003-2008 Linus Walleij <triad@df.lth.se>
  * Copyright (C) 2003-2005 Shaun Jackman
  * Copyright (C) 2003-2005 Enrique Jorrete Ledesma
  * Copyright (C) 2006 Chris A. Debenham <chris@adebenham.com>
+ * Copyright (C) 2008 Nicolas Pennequin <nicolas.pennequin@free.fr>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -81,9 +82,73 @@ static char *prompt (const char *prompt, char *buffer, size_t bufsz, int require
   }
 }
 
+static int add_track_to_album(LIBMTP_album_t *albuminfo, LIBMTP_track_t *trackmeta)
+{
+  LIBMTP_album_t *album;
+  LIBMTP_album_t *found_album = NULL;
+  int ret;
+
+  /* Look for the album */
+  album = LIBMTP_Get_Album_List(device);
+  while(album != NULL) {
+    if (album->name != NULL &&
+	album->artist != NULL &&
+	!strcmp(album->name, albuminfo->name) &&
+	!strcmp(album->artist, albuminfo->artist)) {
+      /* Disconnect this album for later use */
+      found_album = album;
+      album = album->next;
+      found_album->next = NULL;
+    } else {
+      LIBMTP_album_t *tmp;
+
+      tmp = album;
+      album = album->next;
+      LIBMTP_destroy_album_t(tmp);
+    }
+  }
+  
+  if (found_album != NULL) {
+    uint32_t *tracks;
+
+    tracks = (uint32_t *)malloc((found_album->no_tracks+1) * sizeof(uint32_t));
+    printf("Album \"%s\" found: updating...\n", found_album->name);
+    if (!tracks) {
+      printf("failed malloc in add_track_to_album()\n");
+      return 1;
+    }
+    found_album->no_tracks++;
+    if (found_album->tracks != NULL) {
+      memcpy(tracks, found_album->tracks, found_album->no_tracks * sizeof(uint32_t));
+      free(found_album->tracks);
+    }
+    tracks[found_album->no_tracks-1] = trackmeta->item_id;
+    found_album->tracks = tracks;
+    ret = LIBMTP_Update_Album(device, found_album);
+    LIBMTP_destroy_album_t(found_album);
+  } else {
+    uint32_t *trackid;
+    
+    trackid = (uint32_t *)malloc(sizeof(uint32_t));
+    *trackid = trackmeta->item_id;
+    albuminfo->tracks = trackid;
+    albuminfo->no_tracks = 1;
+    printf("Album doesn't exist: creating...\n");
+    ret = LIBMTP_Create_New_Album(device, albuminfo, 0);
+    /* albuminfo will be destroyed later by caller */
+  }
+  
+  if (ret != 0) {
+    printf("Error creating or updating album.\n");
+    LIBMTP_Dump_Errorstack(device);
+    LIBMTP_Clear_Errorstack(device);
+  } else {
+    printf("success!\n");
+  }
+}
+
 int sendtrack_function(char * from_path, char * to_path, char *partist, char *ptitle, char *pgenre, char *palbum, uint16_t tracknum, uint16_t length, uint16_t year)
 {
-  printf("Sending track %s to %s\n",from_path,to_path);
   char *filename, *parent;
   char artist[80], title[80], genre[80], album[80];
   char num[80];
@@ -95,7 +160,13 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pt
   struct stat sb;
 #endif
   LIBMTP_track_t *trackmeta;
+  LIBMTP_album_t *albuminfo;
+  int ret;
+
+  printf("Sending track %s to %s\n",from_path,to_path);
+
   trackmeta = LIBMTP_new_track_t();
+  albuminfo = LIBMTP_new_album_t();
 
   parent = dirname(to_path);
   filename = basename(to_path);
@@ -133,14 +204,11 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pt
       return 1;
     }
 
-    int ret;
-
     if (ptitle == NULL) {
       ptitle = prompt("Title", title, 80, 0);
     }
     if (!strlen(ptitle))
       ptitle = NULL;
-
 
     if (palbum == NULL) {
       palbum = prompt("Album", album, 80, 0);
@@ -192,7 +260,6 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pt
         length = 0;
       }
     }
-
     
     printf("Sending track:\n");
     printf("Codec:     %s\n", LIBMTP_Get_Filetype_Description(trackmeta->filetype));
@@ -203,14 +270,17 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pt
     if (palbum) {
       printf("Album:     %s\n", palbum);
       trackmeta->album = strdup(palbum);
+      albuminfo->name = strdup(palbum);
     }
     if (partist) {
       printf("Artist:    %s\n", partist);
       trackmeta->artist = strdup(partist);
+      albuminfo->artist = strdup(partist);
     }
     if (pgenre) {
       printf("Genre:     %s\n", pgenre);
       trackmeta->genre = strdup(pgenre);
+      albuminfo->genre = strdup(pgenre);
     }
     if (year > 0) {
       char tmp[80];
@@ -245,8 +315,9 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pt
       printf("New track ID: %d\n", trackmeta->item_id);
     }
 
+    LIBMTP_destroy_album_t(albuminfo);
     LIBMTP_destroy_track_t(trackmeta);
-  
+
     return 0;
   }
   return 0;

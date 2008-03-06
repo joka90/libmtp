@@ -1,7 +1,7 @@
 /** 
  * \file pathutils.c
  *
- * Copyright (C) 2005-2007 Linus Walleij <triad@df.lth.se>
+ * Copyright (C) 2005-2008 Linus Walleij <triad@df.lth.se>
  * Copyright (C) 2006 Chris A. Debenham <chris@adebenham.com>
  *
  * This library is free software; you can redistribute it and/or
@@ -26,16 +26,20 @@
 
 /* Find the folder_id of a given path
  * Runs by walking through folders structure */
-int
+static uint32_t
 lookup_folder_id (LIBMTP_folder_t * folder, char * path, char * parent)
 {
+  char * current;
+  uint32_t ret = (uint32_t) -1;
+
   if (strcmp(path,"/")==0)
     return 0;
-  int ret = -1;
+
   if (folder == NULL) {
     return ret;
   }
-  char * current = malloc (strlen(parent) + strlen(folder->name) + 2);
+
+  current = malloc (strlen(parent) + strlen(folder->name) + 2);
   sprintf(current,"%s/%s",parent,folder->name);
   if (strcasecmp (path, current) == 0) {
     free (current);
@@ -57,41 +61,49 @@ int
 parse_path (char * path, LIBMTP_file_t * files, LIBMTP_folder_t * folders)
 {
   char *rest;
+  uint32_t item_id;
+
   // Check if path is an item_id
   if (*path != '/') {
-    int item_id = strtoul(path, &rest, 0);
+    item_id = strtoul(path, &rest, 0);
     // really should check contents of "rest" here...
+    /* if not number, assume a file name */
+    if (item_id == 0) {
+      LIBMTP_file_t * file = files;
+
+      /* search for matching name */
+      while (file != NULL) {
+	if (strcasecmp (file->filename, path) == 0) {
+	  return file->item_id;
+	}
+	file = file->next;
+      }
+    }
     return item_id;
   }
   // Check if path is a folder
-  int item_id = lookup_folder_id(folders,path,"");
-  if (item_id == -1) {
+  item_id = lookup_folder_id(folders,path,"");
+  if (item_id == (uint32_t) -1) {
     char * dirc = strdup(path);
     char * basec = strdup(path);
     char * parent = dirname(dirc);
     char * filename = basename(basec);
-
-    //int len = strlen(strrchr(path,'/'));
-    //char * filename = malloc(len);
-    //int index = strlen (path) - len;
-    //filename = strncpy (filename, &path[index+1],len);
-    //char * parent = malloc(index);
-    //parent = strncpy(parent, path, index);
-    //parent[index] = '\0';
-    int parent_id = lookup_folder_id(folders,parent,"");
+    uint32_t parent_id = lookup_folder_id(folders,parent,"");
     LIBMTP_file_t * file;
+
     file = files;
     while (file != NULL) {
       if (file->parent_id == parent_id) {
         if (strcasecmp (file->filename, filename) == 0) {
-          int item_id = file->item_id;
-	  free(dirc); free(basec);
-          return item_id;
+	  free(dirc);
+	  free(basec);
+          return file->item_id;
         }
       }
       file = file->next;
     }
-    free(dirc); free(basec);
+    free(dirc);
+    free(basec);
   } else {
     return item_id;
   }
@@ -116,8 +128,16 @@ LIBMTP_filetype_t
 find_filetype (const char * filename)
 {
   char *ptype;
-  ptype = rindex(filename,'.')+1;
   LIBMTP_filetype_t filetype;
+
+  ptype = rindex(filename,'.');
+  // This accounts for the case with a filename without any "." (period).
+  if (!ptype) {
+    ptype = "";
+  } else {
+    ++ptype;
+  }
+
   /* This need to be kept constantly updated as new file types arrive. */
   if (!strcasecmp (ptype, "wav")) {
     filetype = LIBMTP_FILETYPE_WAV;
@@ -185,6 +205,8 @@ find_filetype (const char * filename)
     filetype = LIBMTP_FILETYPE_JP2;
   } else if (!strcasecmp (ptype, "jpx")) {
     filetype = LIBMTP_FILETYPE_JPX;
+  } else if (!strcasecmp (ptype, "bin")) {
+    filetype = LIBMTP_FILETYPE_FIRMWARE;
   } else {
     /* Tagging as unknown file type */
     filetype = LIBMTP_FILETYPE_UNKNOWN;
@@ -197,6 +219,7 @@ find_filetype (const char * filename)
 #ifndef HAVE_LIBGEN_H
 static char *basename(char *in) {
   char *p;
+
   if (in == NULL)
     return NULL;
   p = in + strlen(in) - 1;
