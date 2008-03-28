@@ -1,3 +1,12 @@
+libmtp (0.2.6.1-2) unstable; urgency=low
+
+  * debian/control.in:
+    + Change the relationship to udev from Depends to Recommends
+      (closes: #472048)
+    + Append trunk/ to the path in Vcs-Svn:, such that debcheckout works
+
+ -- Rafael Laboissiere <rafael@debian.org>  Fri, 28 Mar 2008 20:34:45 +0100
+
 libmtp (0.2.6.1-1) unstable; urgency=low
 
   * New upstream release
