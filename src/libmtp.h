@@ -2,7 +2,7 @@
  * \file libmtp.h
  * Interface to the Media Transfer Protocol library.
  *
- * Copyright (C) 2005-2007 Linus Walleij <triad@df.lth.se>
+ * Copyright (C) 2005-2008 Linus Walleij <triad@df.lth.se>
  * Copyright (C) 2005-2008 Richard A. Low <richard@wentnet.com>
  * Copyright (C) 2007 Ted Bullock <tbullock@canada.com>
  * Copyright (C) 2008 Florent Mertens <flomertens@gmail.com>
@@ -29,8 +29,8 @@
 #ifndef LIBMTP_H_INCLUSION_GUARD
 #define LIBMTP_H_INCLUSION_GUARD
 
-#define LIBMTP_VERSION 0.2.6.1
-#define LIBMTP_VERSION_STRING "0.2.6.1"
+#define LIBMTP_VERSION 0.3.0
+#define LIBMTP_VERSION_STRING "0.3.0"
 
 /* This handles MSVC pecularities */
 #ifdef _MSC_VER
@@ -109,6 +109,34 @@ typedef enum {
   LIBMTP_FILETYPE_JPX,
   LIBMTP_FILETYPE_UNKNOWN
 } LIBMTP_filetype_t;
+
+/**
+ * Helpful macros to determine filetype properties
+ */
+#define LIBMTP_FILETYPE_IS_AUDIO(a)\
+(a == LIBMTP_FILETYPE_WAV ||\
+ a == LIBMTP_FILETYPE_MP3 ||\
+ a == LIBMTP_FILETYPE_MP2 ||\
+ a == LIBMTP_FILETYPE_WMA ||\
+ a == LIBMTP_FILETYPE_OGG ||\
+ a == LIBMTP_FILETYPE_FLAC ||\
+ a == LIBMTP_FILETYPE_AAC ||\
+ a == LIBMTP_FILETYPE_M4A ||\
+ a == LIBMTP_FILETYPE_UNDEF_AUDIO)
+#define LIBMTP_FILETYPE_IS_VIDEO(a)\
+(a == LIBMTP_FILETYPE_WMV ||\
+ a == LIBMTP_FILETYPE_AVI ||\
+ a == LIBMTP_FILETYPE_MPEG ||\
+ a == LIBMTP_FILETYPE_UNDEF_VIDEO)
+#define LIBMTP_FILETYPE_IS_AUDIOVIDEO(a)\
+(a == LIBMTP_FILETYPE_MP4 ||\
+ a == LIBMTP_FILETYPE_ASF ||\
+ a == LIBMTP_FILETYPE_QT)
+#define LIBMTP_FILETYPE_IS_TRACK(a)\
+(LIBMTP_FILETYPE_IS_AUDIO(a) ||\
+ LIBMTP_FILETYPE_IS_VIDEO(a) ||\
+ LIBMTP_FILETYPE_IS_AUDIOVIDEO(a))
+
 /**
  * These are the numbered error codes. You can also
  * get string representations for errors.
@@ -125,6 +153,7 @@ typedef enum {
   LIBMTP_ERROR_CANCELLED
 } LIBMTP_error_number_t;
 typedef struct LIBMTP_device_entry_struct LIBMTP_device_entry_t; /**< @see LIBMTP_device_entry_struct */
+typedef struct LIBMTP_raw_device_struct LIBMTP_raw_device_t; /**< @see LIBMTP_raw_device_struct */
 typedef struct LIBMTP_error_struct LIBMTP_error_t; /**< @see LIBMTP_error_struct */
 typedef struct LIBMTP_mtpdevice_struct LIBMTP_mtpdevice_t; /**< @see LIBMTP_mtpdevice_struct */
 typedef struct LIBMTP_file_struct LIBMTP_file_t; /**< @see LIBMTP_file_struct */
@@ -167,6 +196,16 @@ struct LIBMTP_device_entry_struct {
 };
 
 /**
+ * A data structure to hold a raw MTP device connected
+ * to the bus.
+ */
+struct LIBMTP_raw_device_struct {
+  LIBMTP_device_entry_t device_entry; /**< The device entry for this raw device */
+  uint32_t bus_location; /**< Location of the bus, if device available */
+  uint8_t devnum; /**< Device number on the bus, if device available */
+};
+
+/**
  * A data structure to hold errors from the library.
  */
 struct LIBMTP_error_struct {
@@ -197,6 +236,7 @@ struct LIBMTP_mtpdevice_struct {
    * The storage for this device, do not use strings in here without 
    * copying them first, and beware that this list may be rebuilt at
    * any time.
+   * @see LIBMTP_Get_Storage()
    */
   LIBMTP_devicestorage_t *storage;
   /**
@@ -235,6 +275,7 @@ struct LIBMTP_mtpdevice_struct {
 struct LIBMTP_file_struct {
   uint32_t item_id; /**< Unique item ID */
   uint32_t parent_id; /**< ID of parent folder */
+  uint32_t storage_id; /**< ID of storage holding this file */
   char *filename; /**< Filename of this file */
   uint64_t filesize; /**< Size of file in bytes */
   LIBMTP_filetype_t filetype; /**< Filetype used for the current file */
@@ -247,8 +288,10 @@ struct LIBMTP_file_struct {
 struct LIBMTP_track_struct {
   uint32_t item_id; /**< Unique item ID */
   uint32_t parent_id; /**< ID of parent folder */
+  uint32_t storage_id; /**< ID of storage holding this track */
   char *title; /**< Track title */
   char *artist; /**< Name of recording artist */
+  char *composer; /**< Name of recording composer */
   char *genre; /**< Genre name for track */
   char *album; /**< Album name for track */
   char *date; /**< Date of original recording as a string */
@@ -272,6 +315,8 @@ struct LIBMTP_track_struct {
  */
 struct LIBMTP_playlist_struct {
   uint32_t playlist_id; /**< Unique playlist ID */
+  uint32_t parent_id; /**< ID of parent folder */
+  uint32_t storage_id; /**< ID of storage holding this playlist */
   char *name; /**< Name of playlist */
   uint32_t *tracks; /**< The tracks in this playlist */
   uint32_t no_tracks; /**< The number of tracks in this playlist */
@@ -283,8 +328,11 @@ struct LIBMTP_playlist_struct {
  */
 struct LIBMTP_album_struct {
   uint32_t album_id; /**< Unique playlist ID */
+  uint32_t parent_id; /**< ID of parent folder */
+  uint32_t storage_id; /**< ID of storage holding this album */
   char *name; /**< Name of album */
   char *artist; /**< Name of album artist */
+  char *composer; /**< Name of recording composer */
   char *genre; /**< Genre of album */
   uint32_t *tracks; /**< The tracks in this album */
   uint32_t no_tracks; /**< The number of tracks in this album */
@@ -297,6 +345,7 @@ struct LIBMTP_album_struct {
 struct LIBMTP_folder_struct {
   uint32_t folder_id; /**< Unique folder ID */
   uint32_t parent_id; /**< ID of parent folder */
+  uint32_t storage_id; /**< ID of storage holding this folder */
   char *name; /**< Name of folder */
   LIBMTP_folder_t *sibling; /**< Next folder at same level or NULL if no more */
   LIBMTP_folder_t *child; /**< Child folder or NULL if no children */
@@ -350,11 +399,14 @@ int LIBMTP_Get_Supported_Devices_List(LIBMTP_device_entry_t ** const, int * cons
  * @defgroup basic The basic device management API.
  * @{
  */
-int LIBMTP_Detect_Descriptor(uint16_t*,uint16_t*);
+LIBMTP_error_number_t LIBMTP_Detect_Raw_Devices(LIBMTP_raw_device_t **, int *);
+LIBMTP_mtpdevice_t *LIBMTP_Open_Raw_Device(LIBMTP_raw_device_t *);
+/* Begin old, legacy interface */
 LIBMTP_mtpdevice_t *LIBMTP_Get_First_Device(void);
 LIBMTP_error_number_t LIBMTP_Get_Connected_Devices(LIBMTP_mtpdevice_t **);
 uint32_t LIBMTP_Number_Devices_In_List(LIBMTP_mtpdevice_t *);
 void LIBMTP_Release_Device_List(LIBMTP_mtpdevice_t*);
+/* End old, legacy interface */
 void LIBMTP_Release_Device(LIBMTP_mtpdevice_t*);
 void LIBMTP_Dump_Device_Info(LIBMTP_mtpdevice_t*);
 int LIBMTP_Reset_Device(LIBMTP_mtpdevice_t*);
@@ -402,10 +454,10 @@ int LIBMTP_Get_File_To_File_Descriptor(LIBMTP_mtpdevice_t*, uint32_t const, int 
 			LIBMTP_progressfunc_t const, void const * const);
 int LIBMTP_Send_File_From_File(LIBMTP_mtpdevice_t *, char const * const,
 	                 LIBMTP_file_t * const, LIBMTP_progressfunc_t const,
-			 void const * const, uint32_t const);
+			 void const * const);
 int LIBMTP_Send_File_From_File_Descriptor(LIBMTP_mtpdevice_t *, int const,
 	                LIBMTP_file_t * const, LIBMTP_progressfunc_t const,
-			void const * const, uint32_t const);
+			void const * const);
 LIBMTP_filesampledata_t *LIBMTP_new_filesampledata_t(void);
 void LIBMTP_destroy_filesampledata_t(LIBMTP_filesampledata_t *);
 int LIBMTP_Get_Representative_Sample_Format(LIBMTP_mtpdevice_t *,
@@ -434,11 +486,11 @@ int LIBMTP_Get_Track_To_File_Descriptor(LIBMTP_mtpdevice_t*, uint32_t const, int
 int LIBMTP_Send_Track_From_File(LIBMTP_mtpdevice_t *,
 			 char const * const, LIBMTP_track_t * const,
                          LIBMTP_progressfunc_t const,
-			 void const * const, uint32_t const);
+			 void const * const);
 int LIBMTP_Send_Track_From_File_Descriptor(LIBMTP_mtpdevice_t *,
 			 int const, LIBMTP_track_t * const,
                          LIBMTP_progressfunc_t const,
-			 void const * const, uint32_t const);
+			 void const * const);
 int LIBMTP_Update_Track_Metadata(LIBMTP_mtpdevice_t *,
 			LIBMTP_track_t const * const);
 int LIBMTP_Track_Exists(LIBMTP_mtpdevice_t *, uint32_t);
@@ -453,7 +505,7 @@ LIBMTP_folder_t *LIBMTP_new_folder_t(void);
 void LIBMTP_destroy_folder_t(LIBMTP_folder_t*);
 LIBMTP_folder_t *LIBMTP_Get_Folder_List(LIBMTP_mtpdevice_t*);
 LIBMTP_folder_t *LIBMTP_Find_Folder(LIBMTP_folder_t*, uint32_t const);
-uint32_t LIBMTP_Create_Folder(LIBMTP_mtpdevice_t*, char *, uint32_t);
+uint32_t LIBMTP_Create_Folder(LIBMTP_mtpdevice_t*, char *, uint32_t, uint32_t);
 /** @} */
 
 
@@ -466,7 +518,7 @@ LIBMTP_playlist_t *LIBMTP_new_playlist_t(void);
 void LIBMTP_destroy_playlist_t(LIBMTP_playlist_t *);
 LIBMTP_playlist_t *LIBMTP_Get_Playlist_List(LIBMTP_mtpdevice_t *);
 LIBMTP_playlist_t *LIBMTP_Get_Playlist(LIBMTP_mtpdevice_t *, uint32_t const);
-int LIBMTP_Create_New_Playlist(LIBMTP_mtpdevice_t *, LIBMTP_playlist_t * const, uint32_t const);
+int LIBMTP_Create_New_Playlist(LIBMTP_mtpdevice_t *, LIBMTP_playlist_t * const);
 int LIBMTP_Update_Playlist(LIBMTP_mtpdevice_t *, LIBMTP_playlist_t const * const);
 
 /**
@@ -478,7 +530,7 @@ LIBMTP_album_t *LIBMTP_new_album_t(void);
 void LIBMTP_destroy_album_t(LIBMTP_album_t *);
 LIBMTP_album_t *LIBMTP_Get_Album_List(LIBMTP_mtpdevice_t *);
 LIBMTP_album_t *LIBMTP_Get_Album(LIBMTP_mtpdevice_t *, uint32_t const);
-int LIBMTP_Create_New_Album(LIBMTP_mtpdevice_t *, LIBMTP_album_t * const, uint32_t const);
+int LIBMTP_Create_New_Album(LIBMTP_mtpdevice_t *, LIBMTP_album_t * const);
 int LIBMTP_Update_Album(LIBMTP_mtpdevice_t *, LIBMTP_album_t const * const);
 
 /**
