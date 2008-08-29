@@ -1,3 +1,13 @@
+libmtp (0.3.1-1) experimental; urgency=low
+
+  * New upstream release.  This new version adds support for many new
+    devices, in particular for the LG VX8550 phone/music player (closes:
+    #494624).
+  * debian/symbols: Add shared library symbols file
+  * debian/watch: Fix URL of upstream tarball
+
+ -- Rafael Laboissiere <rafael@debian.org>  Fri, 29 Aug 2008 19:41:26 +0200
+
 libmtp (0.3.0-1) experimental; urgency=low
 
   * New upstream release.  Upstream has bumped the SONAME version to 8.
