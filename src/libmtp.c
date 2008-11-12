@@ -872,6 +872,7 @@ LIBMTP_mtpdevice_t *LIBMTP_Open_Raw_Device(LIBMTP_raw_device_t *rawdevice)
 
   /* Allocate dynamic space for our device */
   mtp_device = (LIBMTP_mtpdevice_t *) malloc(sizeof(LIBMTP_mtpdevice_t));
+  memset(mtp_device, 0, sizeof(LIBMTP_mtpdevice_t));
   /* Check if there was a memory allocation error */
   if(mtp_device == NULL) {
     /* There has been an memory allocation error. We are going to ignore this
@@ -2928,6 +2929,27 @@ LIBMTP_file_t *LIBMTP_Get_Filelisting_With_Callback(LIBMTP_mtpdevice_t *device,
     }
 
     /*
+     * A special quirk for iriver devices that doesn't quite
+     * remember that some files marked as "unknown" type are
+     * actually OGG files. We look at the filename extension
+     * and see if it happens that this was atleast named "ogg"
+     * and fall back on this heuristic approach in that case, 
+     * for these bugged devices only.
+     */
+    if (file->filetype == LIBMTP_FILETYPE_UNKNOWN &&
+	(FLAG_IRIVER_OGG_ALZHEIMER(ptp_usb) ||
+	 FLAG_OGG_IS_UNKNOWN(ptp_usb))) {
+      // Repair forgotten OGG filetype
+      char *ptype;
+      
+      ptype = rindex(file->filename,'.')+1;
+      if (ptype != NULL && !strcasecmp (ptype, "ogg")) {
+	    // Fix it.
+        file->filetype = LIBMTP_FILETYPE_OGG;
+      }
+    }
+
+    /*
      * If we have a cached, large set of metadata, then use it!
      */
     if (params->props) {
@@ -3563,16 +3585,14 @@ LIBMTP_track_t *LIBMTP_Get_Tracklisting_With_Callback(LIBMTP_mtpdevice_t *device
     // Ignore stuff we don't know how to handle...
     // TODO: get this list as an intersection of the sets
     // supported by the device and the from the device and
-    // all known audio track files?
-    if (!LIBMTP_FILETYPE_IS_AUDIO(mtptype) &&
-	!LIBMTP_FILETYPE_IS_VIDEO(mtptype) &&
-	!LIBMTP_FILETYPE_IS_AUDIOVIDEO(mtptype) &&
+    // all known track files?
+    if (!LIBMTP_FILETYPE_IS_TRACK(mtptype) &&
 	// This row lets through undefined files for examination since they may be forgotten OGG files.
 	(oi->ObjectFormat != PTP_OFC_Undefined || 
-	 !FLAG_IRIVER_OGG_ALZHEIMER(ptp_usb) ||
-	 !FLAG_OGG_IS_UNKNOWN(ptp_usb))
+	 (!FLAG_IRIVER_OGG_ALZHEIMER(ptp_usb) &&
+	 !FLAG_OGG_IS_UNKNOWN(ptp_usb)))
 	) {
-      // printf("Not a music track (format: %d), skipping...\n",oi.ObjectFormat);
+      //printf("Not a music track (name: %s format: %d), skipping...\n", oi->Filename, oi->ObjectFormat);
       continue;
     }
 
@@ -3654,6 +3674,7 @@ LIBMTP_track_t *LIBMTP_Get_Trackmetadata(LIBMTP_mtpdevice_t *device, uint32_t co
 {
   uint32_t i = 0;
   PTPParams *params = (PTPParams *) device->params;
+  PTP_USB *ptp_usb = (PTP_USB*) device->usbinfo;
 
   // Get all the handles if we haven't already done that
   if (params->handles.Handler == NULL) {
@@ -3674,9 +3695,13 @@ LIBMTP_track_t *LIBMTP_Get_Trackmetadata(LIBMTP_mtpdevice_t *device, uint32_t co
     mtptype = map_ptp_type_to_libmtp_type(oi->ObjectFormat);
 
     // Ignore stuff we don't know how to handle...
-    if (!LIBMTP_FILETYPE_IS_AUDIO(mtptype) &&
-	!LIBMTP_FILETYPE_IS_VIDEO(mtptype) &&
-	!LIBMTP_FILETYPE_IS_AUDIOVIDEO(mtptype)) {
+    if (!LIBMTP_FILETYPE_IS_TRACK(mtptype) &&
+	// This row lets through undefined files for examination since they may be forgotten OGG files.
+	(oi->ObjectFormat != PTP_OFC_Undefined || 
+	 (!FLAG_IRIVER_OGG_ALZHEIMER(ptp_usb) &&
+	 !FLAG_OGG_IS_UNKNOWN(ptp_usb)))
+	) {
+      //printf("Not a music track (name: %s format: %d), skipping...\n", oi->Filename, oi->ObjectFormat);
       return NULL;
     }
 
@@ -3694,6 +3719,31 @@ LIBMTP_track_t *LIBMTP_Get_Trackmetadata(LIBMTP_mtpdevice_t *device, uint32_t co
     track->filesize = oi->ObjectCompressedSize;
     if (oi->Filename != NULL) {
       track->filename = strdup(oi->Filename);
+    }
+
+    /*
+     * A special quirk for iriver devices that doesn't quite
+     * remember that some files marked as "unknown" type are
+     * actually OGG files. We look at the filename extension
+     * and see if it happens that this was atleast named "ogg"
+     * and fall back on this heuristic approach in that case, 
+     * for these bugged devices only.
+     */
+    if (track->filetype == LIBMTP_FILETYPE_UNKNOWN &&
+	(FLAG_IRIVER_OGG_ALZHEIMER(ptp_usb) ||
+	 FLAG_OGG_IS_UNKNOWN(ptp_usb))) {
+      // Repair forgotten OGG filetype
+      char *ptype;
+      
+      ptype = rindex(track->filename,'.')+1;
+      if (ptype != NULL && !strcasecmp (ptype, "ogg")) {
+	     // Fix it.
+	     track->filetype = LIBMTP_FILETYPE_OGG;
+      } else {
+	    // This was not an OGG file so discard it
+	    LIBMTP_destroy_track_t(track);
+	    return NULL;
+      }
     }
 
     get_track_metadata(device, oi->ObjectFormat, track);
@@ -4380,11 +4430,13 @@ int LIBMTP_Send_File_From_File_Descriptor(LIBMTP_mtpdevice_t *device,
 	  break;
 	case PTP_OPC_DateModified:
 	  // Tag with current time if that is supported
-	  prop = ptp_get_new_object_prop_entry(&props,&nrofprops);
-	  prop->ObjectHandle = filedata->item_id;
-	  prop->property = PTP_OPC_DateModified;
-	  prop->datatype = PTP_DTC_STR;
-	  prop->propval.str = get_iso8601_stamp();
+	  if (!FLAG_CANNOT_HANDLE_DATEMODIFIED(ptp_usb)) {
+	    prop = ptp_get_new_object_prop_entry(&props,&nrofprops);
+	    prop->ObjectHandle = filedata->item_id;
+	    prop->property = PTP_OPC_DateModified;
+	    prop->datatype = PTP_DTC_STR;
+	    prop->propval.str = get_iso8601_stamp();
+	  }
 	  break;
 	}
       }
@@ -4659,12 +4711,14 @@ int LIBMTP_Update_Track_Metadata(LIBMTP_mtpdevice_t *device,
 	  prop->propval.u32 = adjust_u32(metadata->usecount, &opd);
 	  break;
 	case PTP_OPC_DateModified:
-	  // Tag with current time if that is supported
-	  prop = ptp_get_new_object_prop_entry(&props, &nrofprops);
-	  prop->ObjectHandle = metadata->item_id;
-	  prop->property = PTP_OPC_DateModified;
-	  prop->datatype = PTP_DTC_STR;
-	  prop->propval.str = get_iso8601_stamp();
+	  if (!FLAG_CANNOT_HANDLE_DATEMODIFIED(ptp_usb)) {
+	    // Tag with current time if that is supported
+	    prop = ptp_get_new_object_prop_entry(&props, &nrofprops);
+	    prop->ObjectHandle = metadata->item_id;
+	    prop->property = PTP_OPC_DateModified;
+	    prop->datatype = PTP_DTC_STR;
+	    prop->propval.str = get_iso8601_stamp();
+	  }
 	  break;
 	default:
 	  break;
@@ -4837,7 +4891,7 @@ int LIBMTP_Update_Track_Metadata(LIBMTP_mtpdevice_t *device,
 	  }
 	  break;
 	case PTP_OPC_DateModified:
-	  {
+	  if (!FLAG_CANNOT_HANDLE_DATEMODIFIED(ptp_usb)) {
 	    // Update modification time if supported
 	    char *tmpstamp = get_iso8601_stamp();
 	    ret = set_object_string(device, metadata->item_id, PTP_OPC_DateModified, tmpstamp);
@@ -5401,6 +5455,8 @@ uint32_t LIBMTP_Create_Folder(LIBMTP_mtpdevice_t *device, char *name,
   }
   new_folder.ObjectCompressedSize = 1;
   new_folder.ObjectFormat = PTP_OFC_Association;
+  new_folder.ProtectionStatus = PTP_PS_NoProtection;
+  new_folder.AssociationType = PTP_AT_GenericFolder;
   new_folder.ParentObject = parent_id;
   new_folder.StorageID = store;
 
@@ -5799,11 +5855,13 @@ static int create_new_abstract_list(LIBMTP_mtpdevice_t *device,
 	  break;
  	case PTP_OPC_DateModified:
 	  // Tag with current time if that is supported
-	  prop = ptp_get_new_object_prop_entry(&props,&nrofprops);
-	  prop->ObjectHandle = *newid;
-	  prop->property = PTP_OPC_DateModified;
-	  prop->datatype = PTP_DTC_STR;
-	  prop->propval.str = get_iso8601_stamp();
+	  if (!FLAG_CANNOT_HANDLE_DATEMODIFIED(ptp_usb)) {
+	    prop = ptp_get_new_object_prop_entry(&props,&nrofprops);
+	    prop->ObjectHandle = *newid;
+	    prop->property = PTP_OPC_DateModified;
+	    prop->datatype = PTP_DTC_STR;
+	    prop->propval.str = get_iso8601_stamp();
+	  }
 	  break;
 	}
       }
@@ -5865,58 +5923,78 @@ static int create_new_abstract_list(LIBMTP_mtpdevice_t *device,
       add_ptp_error_to_errorstack(device, ret, "create_new_abstract_list(): Could not send blank object data.");
       return -1;
     }
-	
-    // Update title
-    // FIXME: check if supported
-    if (name != NULL) {
-      ret = set_object_string(device, *newid, PTP_OPC_Name, name);
-      if (ret != 0) {
-	add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "create_new_abstract_list(): could not set entity name.");
-	return -1;
-      }
-    }
     
-    // Update artist
-    // FIXME: check if supported
-    if (artist != NULL) {
-      ret = set_object_string(device, *newid, PTP_OPC_AlbumArtist, artist);
-      if (ret != 0) {
-	add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "create_new_abstract_list(): could not set entity album artist.");
-	return -1;
-      }
-    }
-    // Update artist
-    // FIXME: check if supported
-    if (artist != NULL) {
-      ret = set_object_string(device, *newid, PTP_OPC_Artist, artist);
-      if (ret != 0) {
-	add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "create_new_abstract_list(): could not set entity artist.");
-	return -1;
-      }
-    }
+    // set the properties one by one
+    ret = ptp_mtp_getobjectpropssupported(params, objectformat, &propcnt, &properties);
 
-    // Update composer
-    // FIXME: check if supported
-    if (composer != NULL) {
-      ret = set_object_string(device, *newid, PTP_OPC_Composer, composer);
-      if (ret != 0) {
-	add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "create_new_abstract_list(): could not set entity composer.");
-	return -1;
+    for (i=0;i<propcnt;i++) {
+      PTPObjectPropDesc opd;
+      
+      ret = ptp_mtp_getobjectpropdesc(params, properties[i], objectformat, &opd);
+      if (ret != PTP_RC_OK) {
+	add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "create_new_abstract_list(): "
+				"could not get property description.");
+      } else if (opd.GetSet) {
+	switch (properties[i]) {
+	case PTP_OPC_Name:
+	  if (name != NULL) {
+	    ret = set_object_string(device, *newid, PTP_OPC_Name, name);
+	    if (ret != 0) {
+	      add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "create_new_abstract_list(): could not set entity name.");
+	      return -1;
+	    }
+	  }
+	  break;
+	case PTP_OPC_AlbumArtist:
+	  if (artist != NULL) {
+	    ret = set_object_string(device, *newid, PTP_OPC_AlbumArtist, artist);
+	    if (ret != 0) {
+	      add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "create_new_abstract_list(): could not set entity album artist.");
+	      return -1;
+	    }
+	  }
+	  break;
+	case PTP_OPC_Artist:
+	  if (artist != NULL) {
+	    ret = set_object_string(device, *newid, PTP_OPC_Artist, artist);
+	    if (ret != 0) {
+	      add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "create_new_abstract_list(): could not set entity artist.");
+	      return -1;
+	    }
+	  }
+	  break;
+	case PTP_OPC_Composer:
+	  if (composer != NULL) {
+	    ret = set_object_string(device, *newid, PTP_OPC_Composer, composer);
+	    if (ret != 0) {
+	      add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "create_new_abstract_list(): could not set entity composer.");
+	      return -1;
+	    }
+	  }
+	  break;
+	case PTP_OPC_Genre:
+	  if (genre != NULL) {
+	    ret = set_object_string(device, *newid, PTP_OPC_Genre, genre);
+	    if (ret != 0) {
+	      add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "create_new_abstract_list(): could not set entity genre.");
+	      return -1;
+	    }
+	  }
+	  break;
+ 	case PTP_OPC_DateModified:
+	  if (!FLAG_CANNOT_HANDLE_DATEMODIFIED(ptp_usb)) {
+	    ret = set_object_string(device, *newid, PTP_OPC_DateModified, get_iso8601_stamp());
+	    if (ret != 0) {
+	      add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "create_new_abstract_list(): could not set date modified.");
+	      return -1;
+	    }
+	  }
+	  break;
+	}
       }
+      ptp_free_objectpropdesc(&opd);
     }
-
-    // Update genre
-    // FIXME: check if supported
-    if (genre != NULL) {
-      ret = set_object_string(device, *newid, PTP_OPC_Genre, genre);
-      if (ret != 0) {
-	add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "create_new_abstract_list(): could not set entity genre.");
-	return -1;
-      }
-    }
-
-    // FIXME: Update date modified
-
+    free(properties);
   }
 
   if (no_tracks > 0) {
@@ -6033,12 +6111,14 @@ static int update_abstract_list(LIBMTP_mtpdevice_t *device,
 	  }
 	  break;
  	case PTP_OPC_DateModified:
-	  // Tag with current time if that is supported
-	  prop = ptp_get_new_object_prop_entry(&props, &nrofprops);
-	  prop->ObjectHandle = objecthandle;
-	  prop->property = PTP_OPC_DateModified;
-	  prop->datatype = PTP_DTC_STR;
-	  prop->propval.str = get_iso8601_stamp();
+	  if (!FLAG_CANNOT_HANDLE_DATEMODIFIED(ptp_usb)) {
+	    // Tag with current time if that is supported
+	    prop = ptp_get_new_object_prop_entry(&props, &nrofprops);
+	    prop->ObjectHandle = objecthandle;
+	    prop->property = PTP_OPC_DateModified;
+	    prop->datatype = PTP_DTC_STR;
+	    prop->propval.str = get_iso8601_stamp();
+	  }
 	  break;
 	default:
 	  break;
@@ -6106,7 +6186,7 @@ static int update_abstract_list(LIBMTP_mtpdevice_t *device,
 	break;
       case PTP_OPC_DateModified:
 	// Update date modified
-	{
+	if (!FLAG_CANNOT_HANDLE_DATEMODIFIED(ptp_usb)) {
 	  char *tmpdate = get_iso8601_stamp();
 	  ret = set_object_string(device, objecthandle, PTP_OPC_DateModified, tmpdate);
 	  if (ret != 0) {
