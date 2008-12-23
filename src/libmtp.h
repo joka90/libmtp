@@ -29,8 +29,8 @@
 #ifndef LIBMTP_H_INCLUSION_GUARD
 #define LIBMTP_H_INCLUSION_GUARD
 
-#define LIBMTP_VERSION 0.3.4
-#define LIBMTP_VERSION_STRING "0.3.4"
+#define LIBMTP_VERSION 0.3.5
+#define LIBMTP_VERSION_STRING "0.3.5"
 
 /* This handles MSVC pecularities */
 #ifdef _MSC_VER
@@ -578,7 +578,7 @@ void LIBMTP_destroy_playlist_t(LIBMTP_playlist_t *);
 LIBMTP_playlist_t *LIBMTP_Get_Playlist_List(LIBMTP_mtpdevice_t *);
 LIBMTP_playlist_t *LIBMTP_Get_Playlist(LIBMTP_mtpdevice_t *, uint32_t const);
 int LIBMTP_Create_New_Playlist(LIBMTP_mtpdevice_t *, LIBMTP_playlist_t * const);
-int LIBMTP_Update_Playlist(LIBMTP_mtpdevice_t *, LIBMTP_playlist_t const * const);
+int LIBMTP_Update_Playlist(LIBMTP_mtpdevice_t *, LIBMTP_playlist_t * const);
 int LIBMTP_Set_Playlist_Name(LIBMTP_mtpdevice_t *, LIBMTP_playlist_t *, const char *);
 
 /**
