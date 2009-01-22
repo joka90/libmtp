@@ -229,12 +229,13 @@ EXTRA_DIST = libmtp.h.in libmtp.sym ptp-pack.c
 # ---------------------------------------------------------------------------
 CURRENT = 10
 AGE = 2
-REVISION = 0
+REVISION = 1
 SOVERSION = $(CURRENT):$(REVISION):$(AGE)
 @COMPILE_MINGW32_TRUE@noinst_DATA = libmtp.lib
-@COMPILE_MINGW32_TRUE@W32LF = -export-dynamic
-libmtp_la_LDFLAGS = @LDFLAGS@  -no-undefined -export-symbols libmtp.sym -version-info $(W32LF) $(SOVERSION)
+@COMPILE_MINGW32_TRUE@W32LF = -export-dynamic -liconv -ws2_32
+libmtp_la_LDFLAGS = @LDFLAGS@ -no-undefined -export-symbols libmtp.sym -version-info $(SOVERSION) $(W32LF)
 libmtp_la_DEPENDENCIES = libmtp.sym
+DISTCLEANFILES = _stdint.h
 all: all-am
 
 .SUFFIXES:
@@ -457,6 +458,7 @@ clean-generic:
 
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
+	-test -z "$(DISTCLEANFILES)" || rm -f $(DISTCLEANFILES)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"

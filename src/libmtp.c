@@ -44,6 +44,8 @@
 #include "device-flags.h"
 #include "playlist-spl.h"
 
+#include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -2994,7 +2996,7 @@ LIBMTP_file_t *LIBMTP_Get_Filelisting_With_Callback(LIBMTP_mtpdevice_t *device,
       // Repair forgotten OGG filetype
       char *ptype;
       
-      ptype = rindex(file->filename,'.')+1;
+      ptype = strrchr(file->filename,'.')+1;
       if (ptype != NULL && !strcasecmp (ptype, "ogg")) {
 	    // Fix it.
         file->filetype = LIBMTP_FILETYPE_OGG;
@@ -3680,7 +3682,7 @@ LIBMTP_track_t *LIBMTP_Get_Tracklisting_With_Callback(LIBMTP_mtpdevice_t *device
       // Repair forgotten OGG filetype
       char *ptype;
       
-      ptype = rindex(track->filename,'.')+1;
+      ptype = strrchr(track->filename,'.')+1;
       if (ptype != NULL && !strcasecmp (ptype, "ogg")) {
 	// Fix it.
 	track->filetype = LIBMTP_FILETYPE_OGG;
@@ -3787,7 +3789,7 @@ LIBMTP_track_t *LIBMTP_Get_Trackmetadata(LIBMTP_mtpdevice_t *device, uint32_t co
       // Repair forgotten OGG filetype
       char *ptype;
       
-      ptype = rindex(track->filename,'.')+1;
+      ptype = strrchr(track->filename,'.')+1;
       if (ptype != NULL && !strcasecmp (ptype, "ogg")) {
 	     // Fix it.
 	     track->filetype = LIBMTP_FILETYPE_OGG;
@@ -3840,7 +3842,7 @@ int LIBMTP_Get_File_To_File(LIBMTP_mtpdevice_t *device, uint32_t const id,
 #ifdef USE_WINDOWS_IO_H
   if ( (fd = _open(path, O_RDWR|O_CREAT|O_TRUNC|O_BINARY,_S_IREAD)) == -1 ) {
 #else
-  if ( (fd = open(path, O_RDWR|O_CREAT|O_TRUNC|O_BINARY,S_IRWXU|S_IRGRP)) == -1 ) {
+  if ( (fd = open(path, O_RDWR|O_CREAT|O_TRUNC|O_BINARY,S_IRWXU)) == -1 ) {
 #endif
 #else
 #ifdef __USE_LARGEFILE64
@@ -4044,9 +4046,9 @@ int LIBMTP_Send_Track_From_File(LIBMTP_mtpdevice_t *device,
   // Open file
 #ifdef __WIN32__
 #ifdef USE_WINDOWS_IO_H
-  if ( (fd = _open(path, O_RDONLY|O_BINARY) == -1 ) {
+  if ( (fd = _open(path, O_RDONLY|O_BINARY) == -1) ) {
 #else
-  if ( (fd = open(path, O_RDONLY|O_BINARY) == -1 ) {
+  if ( (fd = open(path, O_RDONLY|O_BINARY) == -1) ) {
 #endif
 #else
 #ifdef __USE_LARGEFILE64
@@ -4217,9 +4219,9 @@ int LIBMTP_Send_File_From_File(LIBMTP_mtpdevice_t *device,
   // Open file
 #ifdef __WIN32__
 #ifdef USE_WINDOWS_IO_H
-  if ( (fd = _open(path, O_RDONLY|O_BINARY) == -1 ) {
+  if ( (fd = _open(path, O_RDONLY|O_BINARY) == -1) ) {
 #else
-  if ( (fd = open(path, O_RDONLY|O_BINARY) == -1 ) {
+  if ( (fd = open(path, O_RDONLY|O_BINARY) == -1) ) {
 #endif
 #else
 #ifdef __USE_LARGEFILE64
@@ -4362,7 +4364,8 @@ int LIBMTP_Send_File_From_File_Descriptor(LIBMTP_mtpdevice_t *device,
     of = PTP_OFC_Undefined;
   }
 
-  if (ptp_operation_issupported(params,PTP_OC_MTP_SendObjectPropList)) {
+  if (ptp_operation_issupported(params, PTP_OC_MTP_SendObjectPropList) &&
+      !FLAG_BROKEN_SEND_OBJECT_PROPLIST(ptp_usb)) {
     /*
      * MTP enhanched does it this way (from a sniff):
      * -> PTP_OC_MTP_SendObjectPropList (0x9808):
@@ -5858,8 +5861,8 @@ static int create_new_abstract_list(LIBMTP_mtpdevice_t *device,
     fname[sizeof(fname)-1] = '\0';
   }
 
-  if (ptp_operation_issupported(params,PTP_OC_MTP_SendObjectPropList)) {
-
+  if (ptp_operation_issupported(params, PTP_OC_MTP_SendObjectPropList) &&
+      !FLAG_BROKEN_SEND_OBJECT_PROPLIST(ptp_usb)) {
     MTPProperties *props = NULL;
     MTPProperties *prop = NULL;
     int nrofprops = 0;

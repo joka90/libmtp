@@ -22,9 +22,14 @@
  */
 #include "common.h"
 #include "string.h"
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <limits.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+#include <sys/stat.h>
 
 static void usage(void) {
   printf("Usage: thumb -i <fileid/trackid> <imagefile>\n");
@@ -77,7 +82,7 @@ int main (int argc, char **argv) {
   imagedata = malloc(filesize * sizeof(uint16_t));
 
 #ifdef __WIN32__
-  if ( (fd = open(path, O_RDONLY|O_BINARY) == -1 ) {
+  if ( (fd = open(path, O_RDONLY|O_BINARY) == -1) ) {
 #else
   if ( (fd = open(path, O_RDONLY)) == -1) {
 #endif

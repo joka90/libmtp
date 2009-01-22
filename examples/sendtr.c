@@ -5,7 +5,7 @@
  * based on Enrique Jorreto Ledesma's work on the original program by 
  * Shaun Jackman and Linus Walleij.
  *
- * Copyright (C) 2003-2008 Linus Walleij <triad@df.lth.se>
+ * Copyright (C) 2003-2009 Linus Walleij <triad@df.lth.se>
  * Copyright (C) 2003-2005 Shaun Jackman
  * Copyright (C) 2003-2005 Enrique Jorrete Ledesma
  * Copyright (C) 2006 Chris A. Debenham <chris@adebenham.com>
@@ -32,6 +32,8 @@
 
 #include "common.h"
 #include "util.h"
+#include <stdlib.h>
+#include <limits.h>
 #include <string.h>
 #include <libgen.h>
 #include <sys/stat.h>
@@ -369,7 +371,8 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pa
     }
 
     /* Add here add to album call */
-    ret = add_track_to_album(albuminfo, trackmeta);
+    if (palbum)
+      ret = add_track_to_album(albuminfo, trackmeta);
 
     LIBMTP_destroy_album_t(albuminfo);
     LIBMTP_destroy_track_t(trackmeta);
@@ -443,6 +446,7 @@ void sendtrack_command (int argc, char **argv) {
   if ( argc != 2 ) {
     printf("You need to pass a filename and destination.\n");
     sendtrack_usage();
+    return;
   }
 
   checklang();
