@@ -1,7 +1,7 @@
 /**
  * \file libmtp.c
  *
- * Copyright (C) 2005-2008 Linus Walleij <triad@df.lth.se>
+ * Copyright (C) 2005-2009 Linus Walleij <triad@df.lth.se>
  * Copyright (C) 2005-2008 Richard A. Low <richard@wentnet.com>
  * Copyright (C) 2007 Ted Bullock <tbullock@canada.com>
  * Copyright (C) 2007 Tero Saarni <tero.saarni@gmail.com>
@@ -160,6 +160,29 @@ static int set_object_filename(LIBMTP_mtpdevice_t *device,
 		uint32_t object_id,
 		uint16_t ptp_type,
                 const char **newname);
+
+/**
+ * Checks if a filename ends with ".ogg". Used in various
+ * situations when the device has no idea that it support
+ * OGG but still does.
+ *
+ * @param name string to be checked.
+ * @return 0 if this does not end with ogg, any other
+ *           value means it does.
+ */
+static int has_ogg_extension(char *name) {
+  char *ptype;
+
+  if (name == NULL)
+    return 0;
+  ptype = strrchr(name,'.');
+  if (ptype == NULL)
+    return 0;
+  if (!strcasecmp (ptype, ".ogg"))
+    return 1;
+  return 0;
+}
+
 
 /**
  * Create a new file mapping entry
@@ -1047,8 +1070,8 @@ LIBMTP_mtpdevice_t *LIBMTP_Open_Raw_Device(LIBMTP_raw_device_t *rawdevice)
   mtp_device->maximum_battery_level = 100;
   
   /* Check if device supports reading maximum battery level */
-  if(ptp_property_issupported( current_params,
-			       PTP_DPC_BatteryLevel)) {
+  if(!FLAG_BROKEN_BATTERY_LEVEL(ptp_usb) && 
+     ptp_property_issupported( current_params, PTP_DPC_BatteryLevel)) {
     PTPDevicePropDesc dpd;
     
     /* Try to read maximum battery level */
@@ -1295,6 +1318,7 @@ LIBMTP_error_t *LIBMTP_Get_Errorstack(LIBMTP_mtpdevice_t *device)
 {
   if (device == NULL) {
     fprintf(stderr, "LIBMTP PANIC: Trying to get the error stack of a NULL device!\n");
+    return NULL;
   }
   return device->errorstack;
 }
@@ -1772,11 +1796,12 @@ static int sort_storage_by(LIBMTP_mtpdevice_t *device,int const sortby)
     }
   }
  
-  newlist->next = NULL;
-  while(newlist->prev != NULL) 
-   newlist = newlist->prev;
-
-  device->storage = newlist;
+  if (newlist != NULL) {
+    newlist->next = NULL;
+    while(newlist->prev != NULL) 
+      newlist = newlist->prev;
+    device->storage = newlist;
+  }
 
   return 0;
 }
@@ -1790,7 +1815,7 @@ static int sort_storage_by(LIBMTP_mtpdevice_t *device,int const sortby)
  */
 static uint32_t get_writeable_storageid(LIBMTP_mtpdevice_t *device, uint64_t fitsize)
 {
-  LIBMTP_devicestorage_t *storage = device->storage;
+  LIBMTP_devicestorage_t *storage;
   uint32_t store = 0x00000000; //Should this be 0xffffffffu instead?
   int subcall_ret;
 
@@ -2541,11 +2566,13 @@ int LIBMTP_Get_Batterylevel(LIBMTP_mtpdevice_t *device,
   PTPPropertyValue propval;
   uint16_t ret;
   PTPParams *params = (PTPParams *) device->params;
+  PTP_USB *ptp_usb = (PTP_USB*) device->usbinfo;
 
   *maximum_level = 0;
   *current_level = 0;
 
-  if (!ptp_property_issupported(params, PTP_DPC_BatteryLevel)) {
+  if (FLAG_BROKEN_BATTERY_LEVEL(ptp_usb) ||
+      !ptp_property_issupported(params, PTP_DPC_BatteryLevel)) {
     return -1;
   }
 
@@ -2819,7 +2846,8 @@ int LIBMTP_Get_Storage(LIBMTP_mtpdevice_t *device, int const sortby)
       storageprev = storage;
     }
 
-    storage->next = NULL;
+    if (storage != NULL)
+      storage->next = NULL;
 
     sort_storage_by(device,sortby);
     free(storageIDs.Storage);
@@ -2994,11 +3022,8 @@ LIBMTP_file_t *LIBMTP_Get_Filelisting_With_Callback(LIBMTP_mtpdevice_t *device,
 	(FLAG_IRIVER_OGG_ALZHEIMER(ptp_usb) ||
 	 FLAG_OGG_IS_UNKNOWN(ptp_usb))) {
       // Repair forgotten OGG filetype
-      char *ptype;
-      
-      ptype = strrchr(file->filename,'.')+1;
-      if (ptype != NULL && !strcasecmp (ptype, "ogg")) {
-	    // Fix it.
+      if (has_ogg_extension(file->filename)) {
+	// Fix it.
         file->filetype = LIBMTP_FILETYPE_OGG;
       }
     }
@@ -3677,14 +3702,11 @@ LIBMTP_track_t *LIBMTP_Get_Tracklisting_With_Callback(LIBMTP_mtpdevice_t *device
      * for these bugged devices only.
      */
     if (track->filetype == LIBMTP_FILETYPE_UNKNOWN &&
+	track->filename != NULL &&
 	(FLAG_IRIVER_OGG_ALZHEIMER(ptp_usb) ||
 	 FLAG_OGG_IS_UNKNOWN(ptp_usb))) {
       // Repair forgotten OGG filetype
-      char *ptype;
-      
-      ptype = strrchr(track->filename,'.')+1;
-      if (ptype != NULL && !strcasecmp (ptype, "ogg")) {
-	// Fix it.
+      if (has_ogg_extension(track->filename)) {
 	track->filetype = LIBMTP_FILETYPE_OGG;
       } else {
 	// This was not an OGG file so discard it and continue
@@ -3786,17 +3808,13 @@ LIBMTP_track_t *LIBMTP_Get_Trackmetadata(LIBMTP_mtpdevice_t *device, uint32_t co
     if (track->filetype == LIBMTP_FILETYPE_UNKNOWN &&
 	(FLAG_IRIVER_OGG_ALZHEIMER(ptp_usb) ||
 	 FLAG_OGG_IS_UNKNOWN(ptp_usb))) {
-      // Repair forgotten OGG filetype
-      char *ptype;
-      
-      ptype = strrchr(track->filename,'.')+1;
-      if (ptype != NULL && !strcasecmp (ptype, "ogg")) {
-	     // Fix it.
-	     track->filetype = LIBMTP_FILETYPE_OGG;
+      if (has_ogg_extension(track->filename)) {
+	// Fix it.
+	track->filetype = LIBMTP_FILETYPE_OGG;
       } else {
-	    // This was not an OGG file so discard it
-	    LIBMTP_destroy_track_t(track);
-	    return NULL;
+	// This was not an OGG file so discard it
+	LIBMTP_destroy_track_t(track);
+	return NULL;
       }
     }
 
@@ -5184,9 +5202,15 @@ int LIBMTP_Set_Track_Name(LIBMTP_mtpdevice_t *device,
 }
 
 /**
- * This function renames a single playlist.
- * This simply means that the PTP_OPC_ObjectFileName property
- * is updated, if this is supported by the device.
+ * This function renames a single playlist object file holder.
+ * This simply means that the <code>PTP_OPC_ObjectFileName</code>
+ * property is updated, if this is supported by the device.
+ * The playlist filename should nominally end with an extension
+ * like ".pla".
+ *
+ * NOTE: if you want to change the metadata the device display
+ * about a playlist you must <i>not</i> use this function,
+ * use <code>LIBMTP_Update_Playlist()</code> instead!
  *
  * @param device a pointer to the device that contains the file.
  * @param playlist the playlist metadata of the playlist to rename.
@@ -5194,6 +5218,7 @@ int LIBMTP_Set_Track_Name(LIBMTP_mtpdevice_t *device,
  *        this name can be different than newname depending of device restrictions.
  * @param newname the new name for this object.
  * @return 0 on success, any other value means failure.
+ * @see LIBMTP_Update_Playlist()
  */
 int LIBMTP_Set_Playlist_Name(LIBMTP_mtpdevice_t *device,
                    LIBMTP_playlist_t *playlist, const char* newname)
@@ -5215,8 +5240,14 @@ int LIBMTP_Set_Playlist_Name(LIBMTP_mtpdevice_t *device,
 
 /**
  * This function renames a single album.
- * This simply means that the PTP_OPC_ObjectFileName property
- * is updated, if this is supported by the device.
+ * This simply means that the <code>PTP_OPC_ObjectFileName</code>
+ * property is updated, if this is supported by the device.
+ * The album filename should nominally end with an extension
+ * like ".alb".
+ *
+ * NOTE: if you want to change the metadata the device display
+ * about a playlist you must <i>not</i> use this function,
+ * use <code>LIBMTP_Update_Album()</code> instead!
  *
  * @param device a pointer to the device that contains the file.
  * @param album the album metadata of the album to rename.
@@ -5224,6 +5255,7 @@ int LIBMTP_Set_Playlist_Name(LIBMTP_mtpdevice_t *device,
  *        this name can be different than newname depending of device restrictions.
  * @param newname the new name for this object.
  * @return 0 on success, any other value means failure.
+ * @see LIBMTP_Update_Album()
  */
 int LIBMTP_Set_Album_Name(LIBMTP_mtpdevice_t *device,
                    LIBMTP_album_t *album, const char* newname)
@@ -6327,9 +6359,19 @@ static int update_abstract_list(LIBMTP_mtpdevice_t *device,
  * @param metadata the metadata for the new playlist. If the function
  *        exits with success, the <code>playlist_id</code> field of this
  *        struct will contain the new playlist ID of the playlist.
- *        <code>parent_id</code> will also be valid.
- * @param parenthandle the parent (e.g. folder) to store this playlist
- *        in. Pass in 0 to put the playlist in the root directory.
+ *        <ul>
+ *        <li><code>metadata-&gt;parent_id</code> should be set to the parent 
+ *        (e.g. folder) to store this track in. Since some 
+ *        devices are a bit picky about where files
+ *        are placed, a default folder will be chosen if libmtp
+ *        has detected one for the current filetype and this
+ *        parameter is set to 0. If this is 0 and no default folder
+ *        can be found, the file will be stored in the root folder.
+ *        <li><code>metadata-&gt;storage_id</code> should be set to the
+ *        desired storage (e.g. memory card or whatever your device
+ *        presents) to store this track in. Setting this to 0 will store
+ *        the track on the primary storage.
+ *        </ul>
  * @return 0 on success, any other value means failure.
  * @see LIBMTP_Update_Playlist()
  * @see LIBMTP_Delete_Object()
@@ -6342,7 +6384,10 @@ int LIBMTP_Create_New_Playlist(LIBMTP_mtpdevice_t *device,
 
   // Use a default folder if none given
   if (localph == 0) {
-    localph = device->default_playlist_folder;
+    if (device->default_playlist_folder != 0)
+      localph = device->default_playlist_folder;
+    else
+      localph = device->default_music_folder;
   }
   metadata->parent_id = localph;
 
@@ -6595,9 +6640,19 @@ LIBMTP_album_t *LIBMTP_Get_Album(LIBMTP_mtpdevice_t *device, uint32_t const albi
  * @param metadata the metadata for the new album. If the function
  *        exits with success, the <code>album_id</code> field of this
  *        struct will contain the new ID of the album.
- *        <code>parent_id</code> will also be valid.
- * @param parenthandle the parent (e.g. folder) to store this album
- *        in. Pass in 0 to put the album in the default music directory.
+ *        <ul>
+ *        <li><code>metadata-&gt;parent_id</code> should be set to the parent 
+ *        (e.g. folder) to store this track in. Since some 
+ *        devices are a bit picky about where files
+ *        are placed, a default folder will be chosen if libmtp
+ *        has detected one for the current filetype and this
+ *        parameter is set to 0. If this is 0 and no default folder
+ *        can be found, the file will be stored in the root folder.
+ *        <li><code>metadata-&gt;storage_id</code> should be set to the
+ *        desired storage (e.g. memory card or whatever your device
+ *        presents) to store this track in. Setting this to 0 will store
+ *        the track on the primary storage.
+ *        </ul>
  * @return 0 on success, any other value means failure.
  * @see LIBMTP_Update_Album()
  * @see LIBMTP_Delete_Object()
@@ -6609,7 +6664,10 @@ int LIBMTP_Create_New_Album(LIBMTP_mtpdevice_t *device,
 
   // Use a default folder if none given
   if (localph == 0) {
-    localph = device->default_album_folder;
+    if (device->default_album_folder != 0)
+      localph = device->default_album_folder;
+    else
+      localph = device->default_music_folder;
   }
   metadata->parent_id = localph;
 
