@@ -6,21 +6,21 @@ Build-Depends: libusb-dev, doxygen, debhelper (>= 5), cdbs,
  dpkg-dev (>= 1.13.19), xsltproc, docbook-xsl, chrpath
 Standards-Version: 3.8.1
 Homepage: http://libmtp.sourceforge.net/
-Vcs-Svn: svn://svn.debian.org/svn/private/rafael/deb-pkg/libmtp/trunk
-Vcs-Browser: http://svn.debian.org/viewsvn/rafael/deb-pkg/libmtp
+Vcs-Git: git://alioth.debian.org/~rafael/public_git/deb-pkg/libmtp.git
+Vcs-Browser: http://git.debian.org/?p=users/rafael/deb-pkg/libmtp.git
 
 Package: libmtp8
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Recommends: ${udev}
 Description: Media Transfer Protocol (MTP) library
- A library for communicating with MTP aware devices.  MTP (Media
- Transfer Protocol) is necessary to communicate with some USB portable
- devices like mp3 players, video players or digital camera.
+ libmtp is a library for communicating with MTP aware devices in POSIX
+ compliant operating systems.  It implements MTP Basic, the subset
+ proposed for standardization.
  .
- While some portable device will use USB mass storage protocol or PTP
- (picture transfer protocol), some device can only communicate through
- MTP [ see http://en.wikipedia.org/wiki/Media_Transfer_Protocol ]
+ The Media Transfer Protocol (commonly referred to as MTP) is a devised
+ set of custom extensions to support the transfer of music files on
+ USB digital audio players and movie files on USB portable media players.
 
 Package: libmtp-dev
 Section: libdevel
@@ -28,13 +28,13 @@ Architecture: any
 Depends: libmtp8 (= ${binary:Version}), libusb-dev (>> 0.1.7),
  ${misc:Depends}
 Description: Media Transfer Protocol (MTP) development files
- A library for communicating with MTP aware devices.  MTP (Media
- Transfer Protocol) is necessary to communicate with some USB portable
- devices like mp3 players, video players or digital camera.
+ libmtp is a library for communicating with MTP aware devices in POSIX
+ compliant operating systems.  It implements MTP Basic, the subset
+ proposed for standardization.
  .
- While some portable device will use USB mass storage protocol or PTP
- (picture transfer protocol), some device can only communicate through
- MTP [ see http://en.wikipedia.org/wiki/Media_Transfer_Protocol ]
+ The Media Transfer Protocol (commonly referred to as MTP) is a devised
+ set of custom extensions to support the transfer of music files on
+ USB digital audio players and movie files on USB portable media players.
  .
  This package contains the headers and development libraries.
 
@@ -43,13 +43,13 @@ Section: doc
 Architecture: all
 Depends: ${misc:Depends}
 Description: Media Transfer Protocol (MTP) library documentation
- A library for communicating with MTP aware devices.  MTP (Media
- Transfer Protocol) is necessary to communicate with some USB portable
- devices like mp3 players, video players or digital camera.
+ libmtp is a library for communicating with MTP aware devices in POSIX
+ compliant operating systems.  It implements MTP Basic, the subset
+ proposed for standardization.
  .
- While some portable device will use USB mass storage protocol or PTP
- (picture transfer protocol), some device can only communicate through
- MTP [ see http://en.wikipedia.org/wiki/Media_Transfer_Protocol ]
+ The Media Transfer Protocol (commonly referred to as MTP) is a devised
+ set of custom extensions to support the transfer of music files on
+ USB digital audio players and movie files on USB portable media players.
  .
  This package contains the development documentation.
 
@@ -59,12 +59,12 @@ Architecture: any
 Depends: libmtp8 (= ${binary:Version}), ${shlibs:Depends},
  ${misc:Depends}
 Description: Media Transfer Protocol (MTP) library tools
- A library for communicating with MTP aware devices.  MTP (Media
- Transfer Protocol) is necessary to communicate with some USB portable
- devices like mp3 players, video players or digital camera.
+ libmtp is a library for communicating with MTP aware devices in POSIX
+ compliant operating systems.  It implements MTP Basic, the subset
+ proposed for standardization.
  .
- While some portable device will use USB mass storage protocol or PTP
- (picture transfer protocol), some device can only communicate through
- MTP [ see http://en.wikipedia.org/wiki/Media_Transfer_Protocol ]
+ The Media Transfer Protocol (commonly referred to as MTP) is a devised
+ set of custom extensions to support the transfer of music files on
+ USB digital audio players and movie files on USB portable media players.
  .
  This package contains tools for communicating with MTP devices.
