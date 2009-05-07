@@ -1,13 +1,15 @@
 Source: libmtp
 Section: libs
 Priority: optional
-Maintainer: Rafael Laboissiere <rafael@debian.org>
+Maintainer: libmtp Debian package development <rafael-libmtp@debian.org>
+Uploaders: Rafael Laboissiere <rafael@debian.org>,
+ Savvas Radevic <vicedar@gmail.com>
 Build-Depends: libusb-dev, doxygen, debhelper (>= 5), cdbs,
  dpkg-dev (>= 1.13.19), xsltproc, docbook-xsl, chrpath
 Standards-Version: 3.8.1
 Homepage: http://libmtp.sourceforge.net/
-Vcs-Git: git://alioth.debian.org/~rafael/public_git/deb-pkg/libmtp.git
-Vcs-Browser: http://git.debian.org/?p=users/rafael/deb-pkg/libmtp.git
+Vcs-Git: git://git.debian.org/git/collab-maint/libmtp.git
+Vcs-Browser: http://git.debian.org/?p=collab-maint/libmtp.git
 
 Package: libmtp8
 Architecture: any
