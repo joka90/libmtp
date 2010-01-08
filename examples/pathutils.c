@@ -113,7 +113,7 @@ parse_path (char * path, LIBMTP_file_t * files, LIBMTP_folder_t * folders)
   return -1;
 }
 
-int progress (u_int64_t const sent, u_int64_t const total, void const * const data)
+int progress (const uint64_t sent, const uint64_t total, void const * const data)
 {
   int percent = (sent*100)/total;
 #ifdef __WIN32__
@@ -132,7 +132,11 @@ find_filetype (const char * filename)
   char *ptype;
   LIBMTP_filetype_t filetype;
 
+#ifdef __WIN32__
+  ptype = strrchr(filename, '.');
+#else
   ptype = rindex(filename,'.');
+#endif
   // This accounts for the case with a filename without any "." (period).
   if (!ptype) {
     ptype = "";
@@ -209,11 +213,13 @@ find_filetype (const char * filename)
     filetype = LIBMTP_FILETYPE_JPX;
   } else if (!strcasecmp (ptype, "bin")) {
     filetype = LIBMTP_FILETYPE_FIRMWARE;
+  } else if (!strcasecmp (ptype, "vcf")) {
+    filetype = LIBMTP_FILETYPE_VCARD3;
   } else {
     /* Tagging as unknown file type */
     filetype = LIBMTP_FILETYPE_UNKNOWN;
   }
-  printf("type:%s,%d\n",ptype,filetype);
+  printf("type: %s, %d\n", ptype, filetype);
   return filetype;
 }
 
@@ -230,4 +236,3 @@ static char *basename(char *in) {
   return ++p;
 }
 #endif
-

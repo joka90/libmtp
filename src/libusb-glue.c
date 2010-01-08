@@ -25,10 +25,11 @@
  *
  * Created by Richard Low on 24/12/2005. (as mtp-utils.c)
  * Modified by Linus Walleij 2006-03-06
- *  (Notice that Anglo-Saxons use little-endian dates and Swedes 
+ *  (Notice that Anglo-Saxons use little-endian dates and Swedes
  *   use big-endian dates.)
  *
  */
+#include "config.h"
 #include "libmtp.h"
 #include "libusb-glue.h"
 #include "device-flags.h"
@@ -42,6 +43,11 @@
 #include <usb.h>
 
 #include "ptp-pack.c"
+
+/* Aha, older libusb does not have USB_CLASS_PTP */
+#ifndef USB_CLASS_PTP
+#define USB_CLASS_PTP 6
+#endif
 
 /* To enable debug prints for USB stuff, switch on this */
 //#define ENABLE_USB_BULK_DEBUG
@@ -224,54 +230,84 @@ static int probe_device_descriptor(struct usb_device *dev, FILE *dumpfile)
   }
 
   /*
-   * Loop over the device configurations and interfaces. Nokia MTP-capable 
-   * handsets (possibly others) typically have the string "MTP" in their 
-   * MTP interface descriptions, that's how they can be detected, before
-   * we try the more esoteric "OS descriptors" (below).
+   * This sometimes crashes on the j for loop below
+   * I think it is because config is NULL yet
+   * dev->descriptor.bNumConfigurations > 0
+   * this check should stop this
    */
-  for (i = 0; i < dev->descriptor.bNumConfigurations; i++) {
-    uint8_t j;
-    
-    for (j = 0; j < dev->config[i].bNumInterfaces; j++) {
-      int k;
-      for (k = 0; k < dev->config[i].interface[j].num_altsetting; k++) {
-        buf[0] = '\0';
-        ret = usb_get_string_simple(devh, 
-				    dev->config[i].interface[j].altsetting[k].iInterface, 
-				    (char *) buf, 
-				    1024);
-	if (ret < 3)
-	  continue;
-        if (strcmp((char *) buf, "MTP") == 0) {
-	  if (dumpfile != NULL) {
-            fprintf(dumpfile, "Configuration %d, interface %d, altsetting %d:\n", i, j, k);
-	    fprintf(dumpfile, "   Interface description contains the string \"MTP\"\n");
-	    fprintf(dumpfile, "   Device recognized as MTP, no further probing.\n");
-	  }
-          usb_close(devh);
-          return 1;
-        }
-#ifdef LIBUSB_HAS_GET_DRIVER_NP
-	{
+  if (dev->config) {
+    /*
+     * Loop over the device configurations and interfaces. Nokia MTP-capable
+     * handsets (possibly others) typically have the string "MTP" in their
+     * MTP interface descriptions, that's how they can be detected, before
+     * we try the more esoteric "OS descriptors" (below).
+     */
+    for (i = 0; i < dev->descriptor.bNumConfigurations; i++) {
+      uint8_t j;
+
+      for (j = 0; j < dev->config[i].bNumInterfaces; j++) {
+        int k;
+        for (k = 0; k < dev->config[i].interface[j].num_altsetting; k++) {
+	  /* Current interface descriptor */
+	  struct usb_interface_descriptor *intf =
+	    &dev->config[i].interface[j].altsetting[k];
+
 	  /*
-	   * Specifically avoid probing anything else than USB mass storage devices
-	   * and non-associated drivers in Linux.
+	   * Check for Still Image Capture class with PIMA 15740 protocol,
+	   * also known as PTP
 	   */
-	  char devname[0x10];
-  
-	  devname[0] = '\0';
-	  ret = usb_get_driver_np(devh,
-				  dev->config[i].interface[j].altsetting[k].iInterface,
-				  devname,
-				  sizeof(devname));
-	  if (devname[0] != '\0' && strcmp(devname, "usb-storage")) {
-	    printf("avoid probing device using kernel interface \"%s\"\n", devname);
-	    return 0;
+	  if (intf->bInterfaceClass == USB_CLASS_PTP
+	      && intf->bInterfaceSubClass == 0x01
+	      && intf->bInterfaceProtocol == 0x01) {
+	    if (dumpfile != NULL) {
+              fprintf(dumpfile, "Configuration %d, interface %d, altsetting %d:\n", i, j, k);
+	      fprintf(dumpfile, "   Interface implements PTP class,"
+		      " no further probing.\n");
+	    }
+            usb_close(devh);
+            return 1;
 	  }
-	}
-#endif
+          buf[0] = '\0';
+          ret = usb_get_string_simple(devh,
+				      dev->config[i].interface[j].altsetting[k].iInterface,
+				      (char *) buf,
+				      1024);
+	  if (ret < 3)
+	    continue;
+          if (strcmp((char *) buf, "MTP") == 0) {
+	    if (dumpfile != NULL) {
+              fprintf(dumpfile, "Configuration %d, interface %d, altsetting %d:\n", i, j, k);
+	      fprintf(dumpfile, "   Interface description contains the string \"MTP\"\n");
+	      fprintf(dumpfile, "   Device recognized as MTP, no further probing.\n");
+	    }
+            usb_close(devh);
+            return 1;
+          }
+  #ifdef LIBUSB_HAS_GET_DRIVER_NP
+	  {
+	    /*
+	     * Specifically avoid probing anything else than USB mass storage devices
+	     * and non-associated drivers in Linux.
+	     */
+	    char devname[0x10];
+
+	    devname[0] = '\0';
+	    ret = usb_get_driver_np(devh,
+				    dev->config[i].interface[j].altsetting[k].iInterface,
+				    devname,
+				    sizeof(devname));
+	    if (devname[0] != '\0' && strcmp(devname, "usb-storage")) {
+	      printf("avoid probing device using kernel interface \"%s\"\n", devname);
+	      return 0;
+	    }
+	  }
+  #endif
+        }
       }
     }
+  } else {
+    if (dev->descriptor.bNumConfigurations)
+      printf("dev->config is NULL in probe_device_descriptor yet dev->descriptor.bNumConfigurations > 0\n");
   }
   
   /* Read the special descriptor */
@@ -423,6 +459,18 @@ static LIBMTP_error_number_t get_mtp_usb_device_list(mtpdevice_list_t ** mtp_dev
 							dev,
 							bus->location);
           }
+          /*
+	   * By thomas_-_s: Also append devices that are no MTP but PTP devices
+	   * if this is commented out.
+	   */
+	  /*
+	  else {
+	    // Check whether the device is no USB hub but a PTP.
+	    if ( dev->config != NULL &&dev->config->interface->altsetting->bInterfaceClass == USB_CLASS_PTP && dev->descriptor.bDeviceClass != USB_CLASS_HUB ) {
+	      *mtp_device_list = append_to_mtpdevice_list(*mtp_device_list, dev, bus->location);
+	    }
+          }
+	  */
         }
       }
     }
@@ -554,11 +602,11 @@ LIBMTP_error_number_t LIBMTP_Detect_Raw_Devices(LIBMTP_raw_device_t ** devices,
  */
 void dump_usbinfo(PTP_USB *ptp_usb)
 {
-  int res;
   struct usb_device *dev;
 
 #ifdef LIBUSB_HAS_GET_DRIVER_NP
   char devname[0x10];
+  int res;
   
   devname[0] = '\0';
   res = usb_get_driver_np(ptp_usb->handle, (int) ptp_usb->interface, devname, sizeof(devname));
@@ -595,7 +643,7 @@ void dump_usbinfo(PTP_USB *ptp_usb)
  * @param ptp_usb the USB device to get suggestion for.
  * @return the suggested playlist extension.
  */
-char const * const get_playlist_extension(PTP_USB *ptp_usb)
+const char *get_playlist_extension(PTP_USB *ptp_usb)
 {
   struct usb_device *dev;
   static char creative_pl_extension[] = ".zpl";
@@ -738,7 +786,9 @@ ptp_read_func (
       result--;
     }
     
-    handler->putfunc(NULL, handler->private, result, bytes, &written);
+    int putfunc_ret = handler->putfunc(NULL, handler->priv, result, bytes, &written);
+    if (putfunc_ret != PTP_RC_OK)
+      return putfunc_ret;
     
     ptp_usb->current_transfer_complete += result;
     curread += result;
@@ -815,7 +865,9 @@ ptp_write_func (
         towrite -= towrite % ptp_usb->outep_maxpacket;
       }
     }
-    handler->getfunc(NULL, handler->private,towrite,bytes,&towrite);
+    int getfunc_ret = handler->getfunc(NULL, handler->priv,towrite,bytes,&towrite);
+    if (getfunc_ret != PTP_RC_OK)
+      return getfunc_ret;
     while (usbwritten < towrite) {
 	    result = USB_BULK_WRITE(ptp_usb->handle,ptp_usb->outep,((char*)bytes+usbwritten),towrite-usbwritten,ptp_usb->timeout);
 #ifdef ENABLE_USB_BULK_DEBUG
@@ -917,7 +969,7 @@ static uint16_t
 ptp_init_recv_memory_handler(PTPDataHandler *handler) {
 	PTPMemHandlerPrivate* priv;
 	priv = malloc (sizeof(PTPMemHandlerPrivate));
-	handler->private = priv;
+	handler->priv = priv;
 	handler->getfunc = memory_getfunc;
 	handler->putfunc = memory_putfunc;
 	priv->data = NULL;
@@ -937,7 +989,7 @@ ptp_init_send_memory_handler(PTPDataHandler *handler,
 	priv = malloc (sizeof(PTPMemHandlerPrivate));
 	if (!priv)
 		return PTP_RC_GeneralError;
-	handler->private = priv;
+	handler->priv = priv;
 	handler->getfunc = memory_getfunc;
 	handler->putfunc = memory_putfunc;
 	priv->data = data;
@@ -949,7 +1001,7 @@ ptp_init_send_memory_handler(PTPDataHandler *handler,
 /* free private struct + data */
 static uint16_t
 ptp_exit_send_memory_handler (PTPDataHandler *handler) {
-	PTPMemHandlerPrivate* priv = (PTPMemHandlerPrivate*)handler->private;
+	PTPMemHandlerPrivate* priv = (PTPMemHandlerPrivate*)handler->priv;
 	/* data is owned by caller */
 	free (priv);
 	return PTP_RC_OK;
@@ -960,7 +1012,7 @@ static uint16_t
 ptp_exit_recv_memory_handler (PTPDataHandler *handler,
 	unsigned char **data, unsigned long *size
 ) {
-	PTPMemHandlerPrivate* priv = (PTPMemHandlerPrivate*)handler->private;
+	PTPMemHandlerPrivate* priv = (PTPMemHandlerPrivate*)handler->priv;
 	*data = priv->data;
 	*size = priv->size;
 	free (priv);
@@ -1048,7 +1100,8 @@ ptp_usb_senddata (PTPParams* params, PTPContainer* ptp,
 		/* For all camera devices. */
 		datawlen = (size<PTP_USB_BULK_PAYLOAD_LEN_WRITE)?size:PTP_USB_BULK_PAYLOAD_LEN_WRITE;
 		wlen = PTP_USB_BULK_HDR_LEN + datawlen;
-		ret = handler->getfunc(params, handler->private, datawlen, usbdata.payload.data, &gotlen);
+    
+		ret = handler->getfunc(params, handler->priv, datawlen, usbdata.payload.data, &gotlen);
 		if (ret != PTP_RC_OK)
 			return ret;
 		if (gotlen != datawlen)
@@ -1157,10 +1210,13 @@ ptp_usb_getdata (PTPParams* params, PTPContainer* ptp, PTPDataHandler *handler)
 		}
 		if (usbdata.length == 0xffffffffU) {
 			/* Copy first part of data to 'data' */
+      int putfunc_ret = 
 			handler->putfunc(
-				params, handler->private, rlen - PTP_USB_BULK_HDR_LEN, usbdata.payload.data,
+				params, handler->priv, rlen - PTP_USB_BULK_HDR_LEN, usbdata.payload.data,
 				&written
 			);
+      if (putfunc_ret != PTP_RC_OK)
+        return putfunc_ret;
 			/* stuff data directly to passed data handler */
 			while (1) {
 				unsigned long readdata;
@@ -1223,12 +1279,15 @@ ptp_usb_getdata (PTPParams* params, PTPContainer* ptp, PTPDataHandler *handler)
 			params->split_header_data = 1;
 
 		/* Copy first part of data to 'data' */
+    int putfunc_ret = 
 		handler->putfunc(
-			params, handler->private, rlen - PTP_USB_BULK_HDR_LEN, usbdata.payload.data,
+			params, handler->priv, rlen - PTP_USB_BULK_HDR_LEN, usbdata.payload.data,
 			&written
 		);
-    
-		if (FLAG_NO_ZERO_READS(ptp_usb) && 
+    if (putfunc_ret != PTP_RC_OK)
+      return putfunc_ret;
+
+		if (FLAG_NO_ZERO_READS(ptp_usb) &&
 		    len+PTP_USB_BULK_HDR_LEN == PTP_USB_BULK_HS_MAX_PACKET_LEN_READ) {
 #ifdef ENABLE_USB_BULK_DEBUG
 		  printf("Reading in extra terminating byte\n");
@@ -1237,7 +1296,7 @@ ptp_usb_getdata (PTPParams* params, PTPContainer* ptp, PTPDataHandler *handler)
 		  int result = 0;
 		  char byte = 0;
                   result = USB_BULK_READ(ptp_usb->handle, ptp_usb->inep, &byte, 1, ptp_usb->timeout);
-		  
+
 		  if (result != 1)
 		    printf("Could not read in extra byte for PTP_USB_BULK_HS_MAX_PACKET_LEN_READ long file, return value 0x%04x\n", result);
 		} else if (len+PTP_USB_BULK_HDR_LEN == PTP_USB_BULK_HS_MAX_PACKET_LEN_READ && params->split_header_data == 0) {

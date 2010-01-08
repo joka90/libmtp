@@ -31,10 +31,12 @@
 /*
  * MTP device list, trying real bad to get all devices into
  * this list by stealing from everyone I know.
+ * Some devices taken from the Rockbox device listing:
+ * http://www.rockbox.org/twiki/bin/view/Main/DeviceDetection
  */
 
   /*
-   * Creative Technology
+   * Creative Technology and ZiiLABS
    * Initially the Creative devices was all we supported so these are
    * the most thoroughly tested devices. Presumably only the devices
    * with older firmware (the ones that have 32bit object size) will
@@ -60,20 +62,30 @@
   // This version of the Vision:M needs the no release interface flag,
   // unclear whether the other version above need it too or not.
   { "Creative", 0x041e, "ZEN Vision:M (DVP-HD0004)", 0x4151, 
-      DEVICE_FLAG_NO_RELEASE_INTERFACE | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL},
+      DEVICE_FLAG_NO_RELEASE_INTERFACE |
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL},
   // Reported by Darel on the XNJB forums
-  { "Creative", 0x041e, "ZEN V Plus", 0x4152, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
-  { "Creative", 0x041e, "ZEN Vision W", 0x4153, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
+  { "Creative", 0x041e, "ZEN V Plus", 0x4152,
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
+  { "Creative", 0x041e, "ZEN Vision W", 0x4153,
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
   // Don't add 0x4155: this is a Zen Stone device which is not MTP
   // Reported by Paul Kurczaba <paul@kurczaba.com>
   { "Creative", 0x041e, "ZEN", 0x4157, DEVICE_FLAG_IGNORE_HEADER_ERRORS |
-    DEVICE_FLAG_BROKEN_SET_SAMPLE_DIMENSIONS | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
+    DEVICE_FLAG_BROKEN_SET_SAMPLE_DIMENSIONS |
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
   // Reported by Ringofan <mcroman@users.sourceforge.net>
-  { "Creative", 0x041e, "ZEN V 2GB", 0x4158, DEVICE_FLAG_NONE },
+  { "Creative", 0x041e, "ZEN V 2GB", 0x4158,
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
   // Reported by j norment <stormzen@gmail.com>
-  { "Creative", 0x041e, "ZEN Mozaic", 0x4161, DEVICE_FLAG_NONE },
+  { "Creative", 0x041e, "ZEN Mozaic", 0x4161,
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
   // Reported by Aaron F. Gonzalez <sub_tex@users.sourceforge.net>
-  { "Creative", 0x041e, "ZEN X-Fi", 0x4162, DEVICE_FLAG_NONE },
+  { "Creative", 0x041e, "ZEN X-Fi", 0x4162,
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
+  // Reported by Todor Gyumyushev <yodor1@users.sourceforge.net>
+  { "ZiiLABS", 0x041e, "Zii EGG", 0x6000,
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
 
   /*
    * Samsung
@@ -107,49 +119,75 @@
   { "Samsung", 0x04e8, "YP-Z5", 0x503c, DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_PLAYLIST_SPL_V1 },
   // Don't add 0x5041 as this is YP-Z5 in USB mode
   // Contributed by anonymous person on SourceForge
-  { "Samsung", 0x04e8, "YP-T7J", 0x5047, DEVICE_FLAG_NONE },
+  { "Samsung", 0x04e8, "YP-T7J", 0x5047, DEVICE_FLAG_UNLOAD_DRIVER },
   // Reported by cstrickler@gmail.com
   { "Samsung", 0x04e8, "YP-U2J (YP-U2JXB/XAA)", 0x5054, DEVICE_FLAG_UNLOAD_DRIVER },
   // Reported by Andrew Benson
   { "Samsung", 0x04e8, "YP-F2J", 0x5057, DEVICE_FLAG_UNLOAD_DRIVER },
   // Reported by Patrick <skibler@gmail.com>
   // Just guessing but looks like .spl v1 http://www.anythingbutipod.com/forum/showthread.php?t=14160
-  { "Samsung", 0x04e8, "YP-K5", 0x505a, DEVICE_FLAG_NO_ZERO_READS | DEVICE_FLAG_PLAYLIST_SPL_V1 },
+  { "Samsung", 0x04e8, "YP-K5", 0x505a, DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_NO_ZERO_READS | DEVICE_FLAG_PLAYLIST_SPL_V1 },
   // From dev.local@gmail.com - 0x4e8/0x507c is the UMS mode, apparently
   // do not add that device.
   // From m.eik michalke
   // This device does NOT use the special SPL playlist according to sypqgjxu@gmx.de.
-  { "Samsung", 0x04e8, "YP-U3", 0x507d, DEVICE_FLAG_NONE },
+  { "Samsung", 0x04e8, "YP-U3", 0x507d, DEVICE_FLAG_UNLOAD_DRIVER },
   // Reported by Matthew Wilcox <matthew@wil.cx>
   // Sergio <sfrdll@tiscali.it> reports this device need the BROKEN ALL flag.
   // Guessing on .spl flag
-  { "Samsung", 0x04e8, "YP-T9", 0x507f, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL | DEVICE_FLAG_PLAYLIST_SPL_V1 },
+  { "Samsung", 0x04e8, "YP-T9", 0x507f, DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL | DEVICE_FLAG_PLAYLIST_SPL_V1 },
   // From Paul Clinch
   // Just guessing but looks like .spl v1 http://www.anythingbutipod.com/forum/showthread.php?t=14160
   // Some versions of the firmware reportedly support OGG, reportedly only the
   // UMS versions, so MTP+OGG is not possible on this device.
-  { "Samsung", 0x04e8, "YP-K3", 0x5081, DEVICE_FLAG_NONE | DEVICE_FLAG_PLAYLIST_SPL_V1 },
+  { "Samsung", 0x04e8, "YP-K3", 0x5081, DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_PLAYLIST_SPL_V1 },
   // From XNJB user
   // From Alistair Boyle, .spl v2 required for playlists
   // According to the device log it properly supports OGG
-  { "Samsung", 0x04e8, "YP-P2", 0x5083, DEVICE_FLAG_NO_ZERO_READS | DEVICE_FLAG_PLAYLIST_SPL_V2 },
+  { "Samsung", 0x04e8, "YP-P2", 0x5083, DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_NO_ZERO_READS | DEVICE_FLAG_PLAYLIST_SPL_V2 },
   // From Paul Clinch
   // Guessing on .spl flag
-  { "Samsung", 0x04e8, "YP-T10", 0x508a, DEVICE_FLAG_OGG_IS_UNKNOWN | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_PLAYLIST_SPL_V1 | DEVICE_FLAG_NO_ZERO_READS },
+  { "Samsung", 0x04e8, "YP-T10", 0x508a, DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_OGG_IS_UNKNOWN | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST |
+      DEVICE_FLAG_PLAYLIST_SPL_V1 | DEVICE_FLAG_NO_ZERO_READS },
   // From Wim Verwimp <wimverwimp@gmail.com>
   // Not sure about the Ogg and broken proplist flags here. Just guessing.
   // Guessing on .spl flag
-  { "Samsung", 0x04e8, "YP-S5", 0x508b, DEVICE_FLAG_OGG_IS_UNKNOWN | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_PLAYLIST_SPL_V1 },
+  { "Samsung", 0x04e8, "YP-S5", 0x508b, DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_OGG_IS_UNKNOWN | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST |
+      DEVICE_FLAG_PLAYLIST_SPL_V1 },
   // From Ludovic Danigo
   // Guessing on .spl flag
-  { "Samsung", 0x04e8, "YP-S3", 0x5091, DEVICE_FLAG_OGG_IS_UNKNOWN | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_PLAYLIST_SPL_V1 },
+  { "Samsung", 0x04e8, "YP-S3", 0x5091, DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_OGG_IS_UNKNOWN | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST |
+      DEVICE_FLAG_PLAYLIST_SPL_V1 },
   // From Adrian Levi <adrian.levi@gmail.com>
   // Guessing on .spl flag
   // This one supports OGG properly through the correct MTP type.
-  { "Samsung", 0x04e8, "YP-U4", 0x5093, DEVICE_FLAG_NONE },
+  { "Samsung", 0x04e8, "YP-U4", 0x5093, DEVICE_FLAG_UNLOAD_DRIVER },
   // From Anonymous SourceForge user, NOT VERIFIED TO BE MTP
   // Guessing on .spl flag
-  { "Samsung", 0x04e8, "YP-Q1", 0x5115, DEVICE_FLAG_OGG_IS_UNKNOWN | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_PLAYLIST_SPL_V1 },
+  { "Samsung", 0x04e8, "YP-Q1", 0x5115, DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_OGG_IS_UNKNOWN | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST |
+      DEVICE_FLAG_PLAYLIST_SPL_V1 },
+  // From Anonymous SourceForge user
+  // Guessing on .spl flag
+  { "Samsung", 0x04e8, "YP-P3", 0x511a, DEVICE_FLAG_UNLOAD_DRIVER |
+     DEVICE_FLAG_OGG_IS_UNKNOWN | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST |
+     DEVICE_FLAG_PLAYLIST_SPL_V1 },
+  // From Anonymous SourceForge user
+  // Guessing on .spl flag
+  { "Samsung", 0x04e8, "YP-Q2", 0x511d, DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_OGG_IS_UNKNOWN | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST |
+      DEVICE_FLAG_PLAYLIST_SPL_V1 },
+  // From Marco Pizzocaro <mpizzocaro@users.sourceforge.net>
+  // Guessing on .spl flag
+  { "Samsung", 0x04e8, "YP-U5", 0x5121,
+     DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_PLAYLIST_SPL_V1 },
   // From a rouge .INF file,
   // this device ID seems to have been recycled for:
   // the Samsung SGH-A707 Cingular cellphone
@@ -161,7 +199,7 @@
   // From Santi Béjar <sbejar@gmail.com> - not sure this is MTP...
   // { "Samsung", 0x04e8, "E250 Mobile Phone", 0x663e, DEVICE_FLAG_UNLOAD_DRIVER },
   // From Lionel Bouton
-  { "Samsung", 0x04e8, "X830 Mobile Phone", 0x6702, DEVICE_FLAG_NONE },
+  { "Samsung", 0x04e8, "X830 Mobile Phone", 0x6702, DEVICE_FLAG_UNLOAD_DRIVER },
   // From James <jamestech@gmail.com>
   { "Samsung", 0x04e8, "U600 Mobile Phone", 0x6709, DEVICE_FLAG_UNLOAD_DRIVER },
   // From Cesar Cardoso <cesar@cesarcardoso.tk>
@@ -169,6 +207,15 @@
   { "Samsung", 0x04e8, "F250 Mobile Phone", 0x6727, DEVICE_FLAG_UNLOAD_DRIVER },
   // From Charlie Todd  2007-10-31
   { "Samsung", 0x04e8, "Juke (SCH-U470)", 0x6734, DEVICE_FLAG_UNLOAD_DRIVER},
+  // Reported by Tenn
+  { "Samsung", 0x04e8, "GT-B2700", 0x6752, DEVICE_FLAG_UNLOAD_DRIVER },
+  // Added by Greg Fitzgerald <netzdamon@gmail.com>
+  { "Samsung", 0x04e8, "SAMSUNG Trance", 0x6763, DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_NO_ZERO_READS | DEVICE_FLAG_PLAYLIST_SPL_V1 },
+  // From anonymous Sourceforge user
+  { "Samsung", 0x04e8, "GT-S5230", 0xe20c, DEVICE_FLAG_NONE },
+
+
 
   /*
    * Intel
@@ -216,6 +263,15 @@
   { "Philips", 0x0471, "GoGear SA3345", 0x2004, DEVICE_FLAG_UNLOAD_DRIVER },
   // From Roberto Vidmar <rvidmar@libero.it>
   { "Philips", 0x0471, "SA5285", 0x2022, DEVICE_FLAG_UNLOAD_DRIVER },
+  // From Elie De Brauwer <elie@de-brauwer.be>
+  { "Philips", 0x0471, "GoGear ViBE SA1VBE04", 0x2075,
+    DEVICE_FLAG_UNLOAD_DRIVER },
+  // From Elie De Brauwer <elie@de-brauwer.be>
+  { "Philips", 0x0471, "GoGear ViBE SA1VBE08", 0x207b,
+    DEVICE_FLAG_UNLOAD_DRIVER },
+  // From josmtx <josmtx@users.sourceforge.net>
+  { "Philips", 0x0471, "GoGear Aria", 0x207c,
+    DEVICE_FLAG_UNLOAD_DRIVER },
   // from XNJB user
   { "Philips", 0x0471, "PSA235", 0x7e01, DEVICE_FLAG_NONE },
 
@@ -238,30 +294,31 @@
    * For more info see: http://daniel.haxx.se/sansa/v2.html
    */
   // Reported by Brian Robison
-  { "SanDisk", 0x0781, "Sansa m230/m240", 0x7400, 
+  { "SanDisk", 0x0781, "Sansa m230/m240", 0x7400,
+    DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL |
+    DEVICE_FLAG_NO_RELEASE_INTERFACE | DEVICE_FLAG_CANNOT_HANDLE_DATEMODIFIED },
+  // From Rockbox device listing
+  { "SanDisk", 0x0781, "Sansa m200-tcc (MTP mode)", 0x7401,
     DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL |
     DEVICE_FLAG_NO_RELEASE_INTERFACE | DEVICE_FLAG_CANNOT_HANDLE_DATEMODIFIED },
   // Reported by tangent_@users.sourceforge.net
-  { "SanDisk", 0x0781, "Sansa c150", 0x7410, 
+  { "SanDisk", 0x0781, "Sansa c150", 0x7410,
     DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL |
     DEVICE_FLAG_NO_RELEASE_INTERFACE | DEVICE_FLAG_CANNOT_HANDLE_DATEMODIFIED },
   // From libgphoto2 source
   // Reported by <gonkflea@users.sourceforge.net>
   // Reported by Mike Owen <mikeowen@computerbaseusa.com>
-  { "SanDisk", 0x0781, "Sansa e200/e250/e260/e270/e280", 0x7420, 
+  { "SanDisk", 0x0781, "Sansa e200/e250/e260/e270/e280", 0x7420,
     DEVICE_FLAG_UNLOAD_DRIVER |  DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL |
     DEVICE_FLAG_NO_RELEASE_INTERFACE | DEVICE_FLAG_CANNOT_HANDLE_DATEMODIFIED },
+  // Don't add 0x7421 as this is e280 in MSC mode
   // Reported by XNJB user
-  { "SanDisk", 0x0781, "Sansa e280", 0x7421, 
-    DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL |
-    DEVICE_FLAG_NO_RELEASE_INTERFACE | DEVICE_FLAG_CANNOT_HANDLE_DATEMODIFIED },
-  // Reported by XNJB user
-  { "SanDisk", 0x0781, "Sansa e260/e280 v2", 0x7422, 
+  { "SanDisk", 0x0781, "Sansa e260/e280 v2", 0x7422,
     DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST |
     DEVICE_FLAG_NO_RELEASE_INTERFACE | DEVICE_FLAG_ALWAYS_PROBE_DESCRIPTOR |
     DEVICE_FLAG_CANNOT_HANDLE_DATEMODIFIED },
   // Reported by XNJB user
-  { "SanDisk", 0x0781, "Sansa m240/m250", 0x7430, 
+  { "SanDisk", 0x0781, "Sansa m240/m250", 0x7430,
     DEVICE_FLAG_UNLOAD_DRIVER |  DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL |
     DEVICE_FLAG_NO_RELEASE_INTERFACE | DEVICE_FLAG_CANNOT_HANDLE_DATEMODIFIED },
   // Reported by Eugene Brevdo <ebrevdo@princeton.edu>
@@ -275,23 +332,23 @@
     DEVICE_FLAG_NO_RELEASE_INTERFACE | DEVICE_FLAG_ALWAYS_PROBE_DESCRIPTOR |
     DEVICE_FLAG_CANNOT_HANDLE_DATEMODIFIED},
   // Reported by anonymous user at sourceforge.net
-  { "SanDisk", 0x0781, "Sansa c240/c250", 0x7450, 
+  { "SanDisk", 0x0781, "Sansa c240/c250", 0x7450,
     DEVICE_FLAG_UNLOAD_DRIVER |  DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL |
     DEVICE_FLAG_NO_RELEASE_INTERFACE | DEVICE_FLAG_CANNOT_HANDLE_DATEMODIFIED },
   // Reported by anonymous SourceForge user
-  { "SanDisk", 0x0781, "Sansa c250 v2", 0x7452, 
+  { "SanDisk", 0x0781, "Sansa c250 v2", 0x7452,
     DEVICE_FLAG_UNLOAD_DRIVER |  DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL |
     DEVICE_FLAG_NO_RELEASE_INTERFACE | DEVICE_FLAG_CANNOT_HANDLE_DATEMODIFIED },
   // Reported by Troy Curtis Jr.
-  { "SanDisk", 0x0781, "Sansa Express", 0x7460, 
-    DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | 
+  { "SanDisk", 0x0781, "Sansa Express", 0x7460,
+    DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST |
     DEVICE_FLAG_NO_RELEASE_INTERFACE | DEVICE_FLAG_CANNOT_HANDLE_DATEMODIFIED },
   // Reported by XNJB user, and Miguel de Icaza <miguel@gnome.org>
   // This has no dual-mode so no need to unload any driver.
   // This is a Linux based device!
   { "SanDisk", 0x0781, "Sansa Connect", 0x7480, DEVICE_FLAG_NONE },
   // Reported by anonymous SourceForge user
-  { "SanDisk", 0x0781, "Sansa View", 0x74b0, 
+  { "SanDisk", 0x0781, "Sansa View", 0x74b0,
     DEVICE_FLAG_UNLOAD_DRIVER |  DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL |
     DEVICE_FLAG_NO_RELEASE_INTERFACE | DEVICE_FLAG_CANNOT_HANDLE_DATEMODIFIED },
   // Reported by Patrick <skibler@gmail.com>
@@ -313,10 +370,13 @@
    * all properties for a file when asking for metadata 0xffffffff. 
    * Please test on your device if you believe it isn't broken!
    */
-  { "iRiver", 0x1006, "Portable Media Center", 0x4002, 
+  { "iRiver", 0x1006, "H300 Series MTP", 0x3004,
     DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS | 
     DEVICE_FLAG_IRIVER_OGG_ALZHEIMER },
-  { "iRiver", 0x1006, "Portable Media Center", 0x4003, 
+  { "iRiver", 0x1006, "Portable Media Center", 0x4002,
+    DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS | 
+    DEVICE_FLAG_IRIVER_OGG_ALZHEIMER },
+  { "iRiver", 0x1006, "Portable Media Center", 0x4003,
     DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS | 
     DEVICE_FLAG_IRIVER_OGG_ALZHEIMER },
   // From [st]anislav <iamstanislav@gmail.com>
@@ -387,12 +447,20 @@
   // In USB Mass Storage mode it is 0x4102/0x1047
   // Seems to use the new shaped-up firmware.
   { "iRiver", 0x4102, "Spinn", 0x1147, DEVICE_FLAG_NONE },
+  // Reported by Tony Janssen <tonyjanssen@users.sourceforge.net>
+  { "iRiver", 0x4102, "E50", 0x1151,
+    DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS | 
+    DEVICE_FLAG_OGG_IS_UNKNOWN },
   // Reported by Scott Call
   // Assume this actually supports OGG though it reports it doesn't.
   { "iRiver", 0x4102, "H10 20GB", 0x2101, 
     DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS | 
     DEVICE_FLAG_OGG_IS_UNKNOWN },
-  { "iRiver", 0x4102, "H10", 0x2102, 
+  { "iRiver", 0x4102, "H10 5GB", 0x2102, 
+    DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS | 
+    DEVICE_FLAG_OGG_IS_UNKNOWN },
+  // From Rockbox device listing
+  { "iRiver", 0x4102, "H10 5.6GB", 0x2105, 
     DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS | 
     DEVICE_FLAG_OGG_IS_UNKNOWN },
 
@@ -463,6 +531,8 @@
   { "Archos", 0x0e79, "704 mobile dvr", 0x130d, DEVICE_FLAG_UNLOAD_DRIVER },
   // Reported by Joe Rabinoff
   { "Archos", 0x0e79, "605 (MTP mode)", 0x1313, DEVICE_FLAG_UNLOAD_DRIVER },
+  // Reported by Jim Krehl <jimmuhk@users.sourceforge.net>
+  { "Archos", 0x0e79, "5 (MTP mode)", 0x1331, DEVICE_FLAG_UNLOAD_DRIVER },
   // Reported by Adrien Guichard <tmor@users.sourceforge.net>
   { "Archos", 0x0e79, "5 (MTP mode)", 0x1333, DEVICE_FLAG_UNLOAD_DRIVER },
 
@@ -545,12 +615,22 @@
   { "Nokia", 0x0421, "E71", 0x00e4, DEVICE_FLAG_NONE },
   // From: Laurent Bigonville <bigon@users.sourceforge.net>
   { "Nokia", 0x0421, "E66", 0x00e5, DEVICE_FLAG_NONE },
+  // From: Pier <pierlucalino@users.sourceforge.net>
+  { "Nokia", 0x0421, "5320 XpressMusic", 0x00ea, DEVICE_FLAG_NONE },
+  // From: Gausie <innerdreams@users.sourceforge.net>
+  { "Nokia", 0x0421, "5800 XpressMusic", 0x0154, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
   // From: Willy Gardiol (web) <willy@gardiol.org>
   // Spurious errors for getting all objects, lead me to believe this flag atleast is needed
-  { "Nokia", 0x0421, "5800 XpressMusic", 0x0155, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
+  { "Nokia", 0x0421, "5800 XpressMusic v2", 0x0155, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
   // From an anonymous SourceForge user
   // Not verified to be MTP
   { "Nokia", 0x0421, "E63", 0x0179, DEVICE_FLAG_NONE },
+  // From: FunkyPenguin <awafaa@users.sourceforge.net>
+  { "Nokia", 0x0421, "N97", 0x01f5, DEVICE_FLAG_NONE },
+  // From: Alexander Kojevnikov <alex-kay@users.sourceforge.net>
+  { "Nokia", 0x0421, "6600i", 0x0297, DEVICE_FLAG_NONE },
+  // https://sourceforge.net/tracker/index.php?func=detail&aid=2692473&group_id=8874&atid=358874
+  { "Nokia", 0x0421, "5200", 0x0421, DEVICE_FLAG_NONE },
   // From: http://nds2.nokia.com/files/support/global/phones/software/Nokia_3250_WMP10_driver.inf
   { "Nokia", 0x0421, "3250 Mobile Phone", 0x0462, DEVICE_FLAG_NONE },
   // From http://nds2.nokia.com/files/support/global/phones/software/Nokia_N93_WMP10_Driver.inf
@@ -573,6 +653,8 @@
   { "Nokia", 0x0421, "N95 Mobile Phone", 0x04ef, DEVICE_FLAG_NONE },
   // From: Pat Nicholls <pat@patandannie.co.uk>
   { "Nokia", 0x0421, "N80 Internet Edition (Media Player)", 0x04f1, DEVICE_FLAG_UNLOAD_DRIVER },
+  // Reported by Richard Wall <richard@the-moon.net>
+  { "Nokia", 0x05c6, "5530 Xpressmusic", 0x0229, DEVICE_FLAG_NONE },
   // Reported by anonymous SourceForge user
   // One thing stated by reporter (Nokia model) another by the detect log...
   { "Nokia/Verizon", 0x05c6, "6205 Balboa/Verizon Music Phone", 0x3196, DEVICE_FLAG_NONE },
@@ -612,33 +694,47 @@
   { "NormSoft, Inc.", 0x1703, "Pocket Tunes 4", 0x0002, DEVICE_FLAG_NONE },
 
   /*
-   * TrekStor and Medion devices
+   * TrekStor, Medion and Maxfield devices
    * Their datasheet claims their devices are dualmode so probably needs to
    * unload the attached drivers here.
    */
   // Reported by Stefan Voss <svoss@web.de>
   // This is a Sigmatel SoC with a hard disk.
-  { "TrekStor", 0x066f, "Vibez 8/12GB", 0x842a, 
+  { "TrekStor", 0x066f, "Vibez 8/12GB", 0x842a,
     DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
   // Reported by anonymous SourceForge user.
   // This one done for Medion, whatever that is. Error reported so assume
   // the same bug flag as its ancestor above.
   { "Medion", 0x066f, "MD8333", 0x8550,
     DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
-  // Reported by anonymous Sourceforge user
+  // Reported by anonymous SourceForge user
   { "Medion", 0x066f, "MD8333", 0x8588,
     DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  // Reported by anonymous SourceForge user
+  { "Maxfield", 0x066f, "G-Flash NG 1GB", 0x846c,
+    DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
   // Reported by Cristi Magherusan <majeru@gentoo.ro>
-  { "TrekStor", 0x0402, "i.Beat Sweez FM", 0x0611, 
+  { "TrekStor", 0x0402, "i.Beat Sweez FM", 0x0611,
     DEVICE_FLAG_UNLOAD_DRIVER },
-  
+  // Reported by Fox-ino <fox-ino@users.sourceforge.net>
+  { "ALi Corp.", 0x0402, "MPMAN 2GB", 0x5668,
+    DEVICE_FLAG_UNLOAD_DRIVER },
+  // Reported by Anonymous SourceForge user
+  {"TrekStor", 0x1e68, "i.Beat Organix 2.0", 0x0002,
+    DEVICE_FLAG_UNLOAD_DRIVER },
+
   /*
-   * Disney/Tevion (have had no reports of these actually working.)
+   * Disney/Tevion/MyMusix
    */
   // Reported by XNJB user
   { "Disney", 0x0aa6, "MixMax", 0x6021, DEVICE_FLAG_NONE },
   // Reported by anonymous Sourceforge user 
   { "Tevion", 0x0aa6, "MD 81488", 0x3011, DEVICE_FLAG_NONE },
+  // Reported by Peter Hedlund <peter@peterandlinda.com>
+  { "MyMusix", 0x0aa6, "PD-6070", 0x9601, DEVICE_FLAG_UNLOAD_DRIVER |
+    DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST |
+    DEVICE_FLAG_BROKEN_SEND_OBJECT_PROPLIST |
+    DEVICE_FLAG_NO_RELEASE_INTERFACE },
 
   /*
    * Cowon Systems, Inc.
@@ -657,8 +753,24 @@
   { "Cowon", 0x0e21, "iAudio U5 (MTP mode)", 0x0761,
    DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
   // Reported by TJ Something <tjbk_tjb@users.sourceforge.net>
-  { "Cowon", 0x0e21, "iAudio D2 (MTP mode)", 0x0801, 
+  { "Cowon", 0x0e21, "iAudio D2 (MTP mode)", 0x0801,
    DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  // Reported by anonymous Sourceforge user
+  { "Cowon", 0x0e21, "iAudio D2+ FW 2.x (MTP mode)", 0x0861,
+   DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  // From Rockbox device listing
+  { "Cowon", 0x0e21, "iAudio D2+ DAB FW 4.x (MTP mode)", 0x0871,
+   DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  // From Rockbox device listing
+  { "Cowon", 0x0e21, "iAudio D2+ FW 3.x (MTP mode)", 0x0881,
+   DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  // From Rockbox device listing
+  { "Cowon", 0x0e21, "iAudio D2+ DMB FW 1.x (MTP mode)", 0x0891,
+   DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  // Reported by <twkonefal@users.sourceforge.net>
+  { "Cowon", 0x0e21, "iAudio S9 (MTP mode)", 0x0901,
+   DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST |
+   DEVICE_FLAG_OGG_IS_UNKNOWN | DEVICE_FLAG_FLAC_IS_UNKNOWN },
 
   /*
    * Insignia, dual-mode.
@@ -680,6 +792,9 @@
   // Reported by Cyrille Potereau <cyrille.potereau@wanadoo.fr>
   { "LG Electronics Inc.", 0x1004, "KC910 Renoir Mobile Phone", 0x608f,
       DEVICE_FLAG_UNLOAD_DRIVER },
+  // Reported by anonymous sourceforge user
+  { "LG Electronics Inc.", 0x1004, "KM900", 0x6132,
+      DEVICE_FLAG_UNLOAD_DRIVER },
 
   /*
    * Sony
@@ -688,25 +803,50 @@
    * reported to see a pattern here.
    */
   // Reported by Alessandro Radaelli <alessandro.radaelli@aruba.it>
-  { "Sony", 0x054c, "Walkman NWZ-A815/NWZ-A818", 0x0325, DEVICE_FLAG_UNLOAD_DRIVER },
+  { "Sony", 0x054c, "Walkman NWZ-A815/NWZ-A818", 0x0325,
+      DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
   // Reported by anonymous Sourceforge user.
-  { "Sony", 0x054c, "Walkman NWZ-S516", 0x0326, DEVICE_FLAG_UNLOAD_DRIVER },
+  { "Sony", 0x054c, "Walkman NWZ-S516", 0x0326, DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
   // Reported by Endre Oma <endre.88.oma@gmail.com>
-  { "Sony", 0x054c, "Walkman NWZ-S615F/NWZ-S616F/NWZ-S618F", 0x0327, DEVICE_FLAG_UNLOAD_DRIVER },
+  { "Sony", 0x054c, "Walkman NWZ-S615F/NWZ-S616F/NWZ-S618F", 0x0327,
+      DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
   // Reported by Jean-Marc Bourguet <jm@bourguet.org>
-  { "Sony", 0x054c, "Walkman NWZ-S716F", 0x035a, DEVICE_FLAG_UNLOAD_DRIVER },
+  { "Sony", 0x054c, "Walkman NWZ-S716F", 0x035a, DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
   // Reported by Anon SF User / Anthon van der Neut <avanderneut@avid.com>
-  { "Sony", 0x054c, "Walkman NWZ-A826/NWZ-A828/NWZ-A829", 0x035b, DEVICE_FLAG_UNLOAD_DRIVER },
+  { "Sony", 0x054c, "Walkman NWZ-A826/NWZ-A828/NWZ-A829", 0x035b,
+      DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
   // Reported by Niek Klaverstijn <niekez@users.sourceforge.net>
-  { "Sony", 0x054c, "Walkman NWZ-A726/NWZ-A728/NWZ-A768", 0x035c, DEVICE_FLAG_UNLOAD_DRIVER },
+  { "Sony", 0x054c, "Walkman NWZ-A726/NWZ-A728/NWZ-A768", 0x035c,
+      DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
   // Reported by Mehdi AMINI <mehdi.amini - at - ulp.u-strasbg.fr>
-  { "Sony", 0x054c, "Walkman NWZ-B135", 0x036e, DEVICE_FLAG_UNLOAD_DRIVER },
+  { "Sony", 0x054c, "Walkman NWZ-B135", 0x036e, DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
   // Reported by <tiagoboldt@users.sourceforge.net>
-  { "Sony", 0x054c, "Walkman NWZ-E436F", 0x0385, DEVICE_FLAG_UNLOAD_DRIVER },
+  { "Sony", 0x054c, "Walkman NWZ-E436F", 0x0385, DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  // Reported by Michael Wilkinson
+  { "Sony", 0x054c, "Walkman NWZ-W202", 0x0388, DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
   // Reported by Ondrej Sury <ondrej@sury.org>
-  { "Sony", 0x054c, "Walkman NWZ-S739F", 0x038c, DEVICE_FLAG_UNLOAD_DRIVER },
+  { "Sony", 0x054c, "Walkman NWZ-S739F", 0x038c, DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
   // Reported by Marco Filipe Nunes Soares Abrantes Pereira <marcopereira@ua.pt>
-  { "Sony", 0x054c, "Walkman NWZ-S638F", 0x038e, DEVICE_FLAG_UNLOAD_DRIVER },
+  { "Sony", 0x054c, "Walkman NWZ-S638F", 0x038e, DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  // Reported by Elliot <orwells@users.sourceforge.net>
+  { "Sony", 0x054c, "Walkman NWZ-X1050B/NWZ-X1060B",
+    0x0397, DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  // Reported by Silvio J. Gutierrez <silviogutierrez@users.sourceforge.net>
+  { "Sony", 0x054c, "Walkman NWZ-X1051/NWZ-X1061", 0x0398,
+      DEVICE_FLAG_UNLOAD_DRIVER |
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
 
 
   /*
@@ -715,6 +855,8 @@
    * of the firmware seem to have broken it, so all are flagged as broken
    * for now.
    */
+  // Reported by Thomas Schweitzer <thomas_-_s@users.sourceforge.net>
+  { "SonyEricsson", 0x0fce, "K550i", 0xe000, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
   // Reported by Øyvind Stegard <stegaro@users.sourceforge.net>
   { "SonyEricsson", 0x0fce, "K850i", 0x0075, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
   // Reported by Michael Eriksson
@@ -729,8 +871,21 @@
   { "SonyEricsson", 0x0fce, "C702", 0x00d9, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
   // Reported by Christian Zuckschwerdt <christian@zuckschwerdt.org>
   { "SonyEricsson", 0x0fce, "W980", 0x00da, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  // Reported by David Taylor <davidt-libmtp@yadt.co.uk>
+  { "SonyEricsson", 0x0fce, "C905", 0x00ef, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  // Reported by David House <dmhouse@users.sourceforge.net>
+  { "SonyEricsson", 0x0fce, "W595", 0x00f3,
+      DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL | DEVICE_FLAG_BROKEN_SET_OBJECT_PROPLIST },
   // Reported by Mattias Evensson <mevensson@users.sourceforge.net>
   { "SonyEricsson", 0x0fce, "W902", 0x00f5, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  // Reported by Sarunas <sarunas@users.sourceforge.net>
+  // Doesn't need any flags according to reporter
+  { "SonyEricsson", 0x0fce, "T700", 0x00fb, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
+  // Reported by Stéphane Pontier <shadow_walker@users.sourceforge.net>
+  { "SonyEricsson", 0x0fce, "W705/W715", 0x0105, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  // Reported by Håkan Kvist
+  { "SonyEricsson", 0x0fce, "W995", 0x0112, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+
 
   /*
    * Motorola
@@ -801,6 +956,11 @@
     DEVICE_FLAG_BROKEN_BATTERY_LEVEL | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST |
     DEVICE_FLAG_BROKEN_SET_OBJECT_PROPLIST | DEVICE_FLAG_BROKEN_SEND_OBJECT_PROPLIST },
 
+  // Reported by Demadridsur <demadridsur@gmail.com>
+  { "O2 Sistemas", 0x1e53, "ZoltarTV", 0x0006, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+
+  // Reported by Sense Hofstede <qense@users.sourceforge.net>
+  { "Perception Digital, Ltd", 0x0aa6, "Gigaware GX400", 0x9702, DEVICE_FLAG_NONE },
   /*
    * Other strange stuff.
    */

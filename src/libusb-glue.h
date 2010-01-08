@@ -27,11 +27,18 @@
  * Modified by Linus Walleij
  *
  */
+#ifndef LIBUSB_GLUE_H
+#define LIBUSB_GLUE_H
 
 #include "ptp.h"
 #include <usb.h>
 #include "libmtp.h"
 #include "device-flags.h"
+
+/* Make functions available for C++ */
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
 #define USB_BULK_READ usb_bulk_read
 #define USB_BULK_WRITE usb_bulk_write
@@ -62,7 +69,7 @@ struct _PTP_USB {
 
 int open_device (int busn, int devn, short force, PTP_USB *ptp_usb, PTPParams *params, struct usb_device **dev);
 void dump_usbinfo(PTP_USB *ptp_usb);
-char const * const get_playlist_extension(PTP_USB *ptp_usb);
+const char *get_playlist_extension(PTP_USB *ptp_usb);
 void close_device(PTP_USB *ptp_usb, PTPParams *params);
 LIBMTP_error_number_t configure_usb_device(LIBMTP_raw_device_t *device, 
 					   PTPParams *params,
@@ -107,8 +114,16 @@ void get_usb_device_timeout(PTP_USB *ptp_usb, int *timeout);
   ((a)->rawdevice.device_entry.device_flags & DEVICE_FLAG_BROKEN_SEND_OBJECT_PROPLIST)
 #define FLAG_BROKEN_BATTERY_LEVEL(a) \
   ((a)->rawdevice.device_entry.device_flags & DEVICE_FLAG_BROKEN_BATTERY_LEVEL)
+#define FLAG_FLAC_IS_UNKNOWN(a) \
+  ((a)->rawdevice.device_entry.device_flags & DEVICE_FLAG_FLAC_IS_UNKNOWN)
 
 /* connect_first_device return codes */
 #define PTP_CD_RC_CONNECTED	0
 #define PTP_CD_RC_NO_DEVICES	1
 #define PTP_CD_RC_ERROR_CONNECTING	2
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
+#endif //  LIBUSB-GLUE_H
