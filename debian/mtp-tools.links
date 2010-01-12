@@ -19,3 +19,9 @@ usr/share/man/man1/mtp-tools.1 usr/share/man/man1/mtp-sendtr.1
 usr/share/man/man1/mtp-tools.1 usr/share/man/man1/mtp-thumb.1
 usr/share/man/man1/mtp-tools.1 usr/share/man/man1/mtp-tracks.1
 usr/share/man/man1/mtp-tools.1 usr/share/man/man1/mtp-trexist.1
+usr/bin/mtp-connect usr/bin/mtp-sendtr
+usr/bin/mtp-connect usr/bin/mtp-sendfile
+usr/bin/mtp-connect usr/bin/mtp-delfile
+usr/bin/mtp-connect usr/bin/mtp-newfolder
+usr/bin/mtp-connect usr/bin/mtp-getfile
+
