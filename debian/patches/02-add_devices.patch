@@ -1,12 +1,29 @@
 Author: Alessio Treglia <quadrispro@ubuntu.com>
 Description: Add device entry for
- Creative ZEN MicroPhoto (ID 041E:4133).
+ Creative ZEN MicroPhoto 041E:4133
+ Apple iPhone 05ac:0x1290
+ Apple iPod Touch 1st Gen 05ac:1291
+ Apple iPhone 3G 05ac:0x1292
+ Apple iPod Touch 2nd Gen 05ac:0x1293
+ Apple iPhone 3GS 05ac:0x1294
+ Apple 05ac:1296
+ Apple 05ac:1297
+ Apple 05ac:1298
+ Apple iPod Touch 3rd Gen 05ac:0x1299
+ Apple iPad 05ac:129a
+ SonyEricsson U5 0fce:0133
+ Samsung Galaxy S GT-I9000 04e8:6877
+ Samsung Vibrant SGH-T959 04e8:68a9
+ COBY MP705 1e74:6512
+ Cowon iAudio J3 0e21:0921
+ Motorola Droid X 22b8:41d6
+Origin: upstream, commit:1136,1148,1149,1150,1151,1152,1153,1154
 Forwarded: http://sourceforge.net/support/tracker.php?aid=3053793
 Bug-Ubuntu: https://launchpad.net/bugs/537386
 Bug-Debian: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=594560
 ---
- src/music-players.h |    1 +
- 1 file changed, 1 insertion(+)
+ src/music-players.h |   43 +++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 41 insertions(+), 2 deletions(-)
 
 --- libmtp.orig/src/music-players.h
 +++ libmtp/src/music-players.h
@@ -18,3 +35,87 @@ Bug-Debian: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=594560
    { "Creative", 0x041e, "ZEN Sleek (MTP mode)", 0x4137, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
    { "Creative", 0x041e, "ZEN MicroPhoto", 0x413c, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
    { "Creative", 0x041e, "ZEN Sleek Photo", 0x413d, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
+@@ -234,6 +235,14 @@
+   // Added by Greg Fitzgerald <netzdamon@gmail.com>
+   { "Samsung", 0x04e8, "SAMSUNG Trance", 0x6763, DEVICE_FLAG_UNLOAD_DRIVER |
+       DEVICE_FLAG_NO_ZERO_READS | DEVICE_FLAG_PLAYLIST_SPL_V1 },
++  // From: Erik Berglund <erikjber@users.sourceforge.net>
++  // Logs indicate this needs DEVICE_FLAG_NO_ZERO_READS
++  // https://sourceforge.net/tracker/?func=detail&atid=809061&aid=3026337&group_id=158745
++  { "Samsung", 0x04e8, "Galaxy S GT-I9000", 0x6877, DEVICE_FLAG_UNLOAD_DRIVER |
++      DEVICE_FLAG_PLAYLIST_SPL_V1 },
++  // From: John Gorkos <ab0oo@users.sourceforge.net> and Akos Maroy <darkeye@users.sourceforge.net>
++  { "Samsung", 0x04e8, "Vibrant SGH-T959", 0x68a9, DEVICE_FLAG_UNLOAD_DRIVER |
++      DEVICE_FLAG_PLAYLIST_SPL_V1 },
+   // From anonymous Sourceforge user
+   { "Samsung", 0x04e8, "GT-S5230", 0xe20c, DEVICE_FLAG_NONE },
+ 
+@@ -873,6 +882,10 @@
+   { "Cowon", 0x0e21, "iAudio 9 (MTP mode)", 0x0911,
+    DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST |
+    DEVICE_FLAG_OGG_IS_UNKNOWN | DEVICE_FLAG_FLAC_IS_UNKNOWN },
++  // Reported by Franck VDL <franckv@users.sourceforge.net>
++  { "Cowon", 0x0e21, "iAudio J3 (MTP mode)", 0x0921,
++   DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST |
++   DEVICE_FLAG_OGG_IS_UNKNOWN | DEVICE_FLAG_FLAC_IS_UNKNOWN },
+ 
+   /*
+    * Insignia, dual-mode.
+@@ -1039,6 +1052,9 @@
+   { "SonyEricsson", 0x0fce, "W705/W715", 0x0105, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+   // Reported by Håkan Kvist
+   { "SonyEricsson", 0x0fce, "W995", 0x0112, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
++  // Reported by anonymous SourceForge user
++  { "SonyEricsson", 0x0fce, "U5", 0x0133, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
++
+   // Reported by Jonas Nyrén <spectralmks@users.sourceforge.net>
+   { "SonyEricsson", 0x0fce, "W302", 0x10c8, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+ 
+@@ -1051,6 +1067,9 @@
+   { "Motorola", 0x22b8, "V3m/V750 verizon", 0x2a65,
+       DEVICE_FLAG_BROKEN_SET_OBJECT_PROPLIST |
+       DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
++  // Reported by Steven Roemen <sdroemen@users.sourceforge.net>
++  { "Motorola", 0x22b8, "Droid X", 0x41d6,
++      DEVICE_FLAG_NONE },
+   // Reported by anonymous user
+   { "Motorola", 0x22b8, "Milestone / Verizon Droid", 0x41dc,
+       DEVICE_FLAG_BROKEN_SET_OBJECT_PROPLIST |
+@@ -1068,7 +1087,7 @@
+   // Reported by anonymous user
+   { "Motorola", 0x22b8, "RAZR2 V8/U9/Z6", 0x6415,
+       DEVICE_FLAG_BROKEN_SET_OBJECT_PROPLIST },
+-  
++
+ 
+   /*
+    * Media Keg
+@@ -1140,7 +1159,27 @@
+   /*
+    * Nextar
+    */
+-  { "Nextar", 0x0402, "MA715A-8R", 0x5668 },
++  { "Nextar", 0x0402, "MA715A-8R", 0x5668, DEVICE_FLAG_NONE },
++
++  /*
++   * Coby
++   */
++  { "Coby", 0x1e74, "COBY MP705", 0x6512, DEVICE_FLAG_NONE },
++
++  /*
++   * Apple devices, which are not MTP natively but can be made to speak MTP
++   * using PwnTunes (http://www.pwntunes.net/)
++   */
++  { "Apple", 0x05ac, "iPhone", 0x1290, DEVICE_FLAG_NONE },
++  { "Apple", 0x05ac, "iPod Touch 1st Gen", 0x1291, DEVICE_FLAG_NONE },
++  { "Apple", 0x05ac, "iPhone 3G", 0x1292, DEVICE_FLAG_NONE },
++  { "Apple", 0x05ac, "iPod Touch 2nd Gen", 0x1293, DEVICE_FLAG_NONE },
++  { "Apple", 0x05ac, "iPhone 3GS", 0x1294, DEVICE_FLAG_NONE },
++  { "Apple", 0x05ac, "0x1296", 0x1296, DEVICE_FLAG_NONE },
++  { "Apple", 0x05ac, "0x1297", 0x1297, DEVICE_FLAG_NONE },
++  { "Apple", 0x05ac, "0x1298", 0x1298, DEVICE_FLAG_NONE },
++  { "Apple", 0x05ac, "iPod Touch 3rd Gen", 0x1299, DEVICE_FLAG_NONE },
++  { "Apple", 0x05ac, "iPad", 0x129a, DEVICE_FLAG_NONE },
+ 
+   /*
+    * Other strange stuff.
