@@ -1,3 +1,12 @@
+libmtp (1.0.6-2) unstable; urgency=low
+
+  * Add support for new devices:
+    - Motorola Xoom (two models).
+    - Samsung YP-Q3.
+    - Nokia E7 (LP: #738185).
+
+ -- Alessio Treglia <alessio@debian.org>  Sat, 19 Mar 2011 14:03:16 +0100
+
 libmtp (1.0.6-1) unstable; urgency=low
 
   * New upstream release:
