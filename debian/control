@@ -16,14 +16,13 @@ Homepage: http://libmtp.sourceforge.net/
 Vcs-Git: git://git.debian.org/git/collab-maint/libmtp.git
 Vcs-Browser: http://git.debian.org/?p=collab-maint/libmtp.git
 
-Package: libmtp8
+Package: libmtp9
 Architecture: any
 Depends: ${shlibs:Depends},
  libmtp-common,
  ${misc:Depends}
 Recommends: ${udev},
  libmtp-runtime [linux-any]
-Breaks: udev (<< 0.136-1)
 Pre-Depends: dpkg (>= 1.15.7.2)
 Description: Media Transfer Protocol (MTP) library
  libmtp is a library for communicating with MTP aware devices in POSIX
@@ -53,11 +52,12 @@ Description: Media Transfer Protocol (MTP) common files
 Package: libmtp-runtime
 Architecture: linux-any
 Depends: ${shlibs:Depends},
- libmtp8 (= ${binary:Version}),
+ libmtp9 (= ${binary:Version}),
+ libmtp-common,
  ${misc:Depends}
 Replaces: libmtp8 (= 1.0.6-3)
 Breaks: libmtp8 (= 1.0.6-3)
-Enhances: libmtp8
+Enhances: libmtp9
 Description: Media Transfer Protocol (MTP) runtime tools
  libmtp is a library for communicating with MTP aware devices in POSIX
  compliant operating systems.  It implements MTP Basic, the subset
@@ -74,8 +74,8 @@ Description: Media Transfer Protocol (MTP) runtime tools
 Package: libmtp-dev
 Section: libdevel
 Architecture: all
-Depends: libmtp8 (>= ${source:Version}),
- libmtp8 (<< ${source:Upstream-Version}+1~),
+Depends: libmtp9 (>= ${source:Version}),
+ libmtp9 (<< ${source:Upstream-Version}+1~),
  libusb-dev (>> 0.1.7),
  ${misc:Depends}
 Description: Media Transfer Protocol (MTP) development files
@@ -93,7 +93,7 @@ Package: libmtp-dbg
 Section: debug
 Priority: extra
 Architecture: any
-Depends: libmtp8 (= ${binary:Version}),
+Depends: libmtp9 (= ${binary:Version}),
  mtp-tools (= ${binary:Version}),
  libmtp-runtime (= ${binary:Version}) [linux-any],
  ${misc:Depends}
@@ -126,10 +126,9 @@ Description: Media Transfer Protocol (MTP) library documentation
 Package: mtp-tools
 Section: utils
 Architecture: any
-Depends: libmtp8 (= ${binary:Version}),
- ${shlibs:Depends},
+Depends: ${shlibs:Depends},
  ${misc:Depends}
-Enhances: libmtp8
+Enhances: libmtp9
 Description: Media Transfer Protocol (MTP) library tools
  libmtp is a library for communicating with MTP aware devices in POSIX
  compliant operating systems.  It implements MTP Basic, the subset
