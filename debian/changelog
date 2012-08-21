@@ -1,31 +1,11 @@
-libmtp (1.1.3-35-g0ece104-5+deb7u1) wheezy-security; urgency=high
+libmtp (1.1.4-1) experimental; urgency=low
 
-  * Non-maintainer upload by the LTS Security Team.
-  * upstream patch to import ptp* from libgphoto2 to fix CVE-2017-9831 and
-    CVE-2017-9832
+  * New upstream bugfix release.
+  * Remove 0001-devicedb_updates.patch, applied upstream.
+  * Remove kfreebsd/hurd's patches, they are no longer needed.
+  * Switch dh_autoreconf -> dh_autotools_dev
 
- -- Antoine Beaupré <anarcat@debian.org>  Mon, 17 Jul 2017 14:36:56 -0400
-
-libmtp (1.1.3-35-g0ece104-5) unstable; urgency=low
-
-  * Add support for Google/LG Nexus 4 phones.
-    Thanks to Arno Töll for testing the device. (Closes: #700822)
-
- -- Alessio Treglia <alessio@debian.org>  Sun, 17 Feb 2013 22:37:28 +0000
-
-libmtp (1.1.3-35-g0ece104-4) unstable; urgency=low
-
-  * Blacklist Canon EOS 3D for now as it leads to a SIGSEGV in
-    libc. (Closes: #687004)
-
- -- Alessio Treglia <alessio@debian.org>  Sun, 30 Sep 2012 17:32:59 +0100
-
-libmtp (1.1.3-35-g0ece104-3) unstable; urgency=low
-
-  * Add Sony Tablet P1 support. (Closes: #683637)
-    Thanks to Hideki Yamane for the patch.
-
- -- Alessio Treglia <alessio@debian.org>  Thu, 30 Aug 2012 00:32:57 +0200
+ -- Alessio Treglia <alessio@debian.org>  Tue, 21 Aug 2012 11:35:12 +0200
 
 libmtp (1.1.3-35-g0ece104-2) unstable; urgency=low
 
