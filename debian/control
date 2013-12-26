@@ -2,15 +2,17 @@ Source: libmtp
 Section: libs
 Priority: optional
 Maintainer: Alessio Treglia <alessio@debian.org>
+Uploaders: Michael Tokarev <mjt@tls.msk.ru>
 Build-Depends:
  autoconf,
  automake,
- autotools-dev,
  chrpath,
  debhelper (>= 9),
+ dh-autoreconf,
  docbook-xsl,
  doxygen,
  dpkg-dev (>= 1.13.19),
+ gnulib,
  libgcrypt11-dev,
  libusb-1.0-0-dev [linux-any],
  libusb-dev [!linux-any],
