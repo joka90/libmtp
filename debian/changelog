@@ -1,3 +1,13 @@
+libmtp (1.1.6-20-g1b9f164-2) unstable; urgency=low
+
+  [ Aurelien Jarno ]
+  * Switch to libusb 1.0 on kfreebsd. Closes: #729249.
+
+  [ Alessio Treglia ]
+  * Allow full builds on non-Linux. (Closes: #729806)
+
+ -- Alessio Treglia <alessio@debian.org>  Mon, 24 Feb 2014 14:13:58 +0000
+
 libmtp (1.1.6-20-g1b9f164-1) unstable; urgency=low
 
   * New upstream release.
