@@ -1,3 +1,10 @@
+libmtp (1.1.6-51-g1a2669c~ds0-2) unstable; urgency=medium
+
+  [ David Bremner ]
+  * Disable async buffering (Closes: #745888).
+
+ -- Alessio Treglia <alessio@debian.org>  Sat, 14 Jun 2014 11:15:23 +0100
+
 libmtp (1.1.6-51-g1a2669c~ds0-1) unstable; urgency=low
 
   * New git snapshot.
