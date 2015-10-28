@@ -1,3 +1,13 @@
+libmtp (1.1.10-2) unstable; urgency=medium
+
+  * debian/apport/source_libmtp.py:
+    - updated apport hook to work, import what we need, mention the
+      current soname version and don't include hal info. Thanks to
+      Sebastien Bacher for the patch. (Closes: #802601) (LP: #1172123)
+  * Add Noka C5-00's alternative ID (Closes: #728088)
+
+ -- Alessio Treglia <alessio@debian.org>  Wed, 28 Oct 2015 22:08:19 +0000
+
 libmtp (1.1.10-1) unstable; urgency=medium
 
   * New upstream bugfix release.
