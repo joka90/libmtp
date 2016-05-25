@@ -1,3 +1,16 @@
+libmtp (1.1.11-1) unstable; urgency=medium
+
+  [ Alessio Treglia ]
+  * Imported Upstream version 1.1.11
+  * Drop debian/patches/0001-players.patch, applied upstream
+
+  [ Martin Pitt ]
+  * debian/apport/source_libmtp.py: Stop attaching /var/log/udev (which is
+    only created under Upstart). Use apport's attach_hardware() instead.
+    (Closes: #812729)
+
+ -- Alessio Treglia <alessio@debian.org>  Wed, 25 May 2016 08:27:31 +0100
+
 libmtp (1.1.10-2) unstable; urgency=medium
 
   * debian/apport/source_libmtp.py:
