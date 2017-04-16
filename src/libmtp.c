@@ -1784,24 +1784,15 @@ static void parse_extension_descriptor(LIBMTP_mtpdevice_t *mtpdevice,
           i++;
         if (i < strlen(element)) {
           char *name = strndup(element, i);
-          int majstart = i+1;
-          // printf("    Extension: \"%s\"\n", name);
+          int major = 0, minor = 0;
 
-          /* Parse for minor/major punctuation mark for this extension */
-          while ((i < strlen(element)) && (element[i] != '.'))
-            i++;
-          if (i > majstart && i < strlen(element)) {
+	  /* extension versions have to be MAJOR.MINOR, but Samsung has one
+	   * with just 0, so just cope with those cases too */
+	  if (	(2 == sscanf(element+i+1,"%d.%d",&major,&minor)) || 
+	  	(1 == sscanf(element+i+1,"%d",&major))
+	  ) {
             LIBMTP_device_extension_t *extension;
-            int major = 0;
-            int minor = 0;
-            char *majorstr = strndup(element + majstart, i - majstart);
-            char *minorstr = strndup(element + i + 1, strlen(element) - i - 1);
-            major = atoi(majorstr);
-            minor = atoi(minorstr);
-            // printf("    Major: \"%s\" (parsed %d) Minor: \"%s\" (parsed %d)\n",
-            //      majorstr, major, minorstr, minor);
-	    free(majorstr);
-	    free(minorstr);
+
             extension = malloc(sizeof(LIBMTP_device_extension_t));
             extension->name = name;
             extension->major = major;
@@ -1872,6 +1863,7 @@ LIBMTP_mtpdevice_t *LIBMTP_Open_Raw_Device_Uncached(LIBMTP_raw_device_t *rawdevi
   memset(current_params, 0, sizeof(PTPParams));
   current_params->device_flags = rawdevice->device_entry.device_flags;
   current_params->nrofobjects = 0;
+  current_params->cachetime = 2;
   current_params->objects = NULL;
   current_params->response_packet_size = 0;
   current_params->response_packet = NULL;
@@ -3176,19 +3168,14 @@ void LIBMTP_Dump_Device_Info(LIBMTP_mtpdevice_t *device)
     tmpext = tmpext->next;
   }
   printf("Supported operations:\n");
-  for (i=0;i<params->deviceinfo.OperationsSupported_len;i++) {
-    char txt[256];
-
-    (void) ptp_render_ofc(params, params->deviceinfo.OperationsSupported[i],
-			     sizeof(txt), txt);
-    printf("   %04x: %s\n", params->deviceinfo.OperationsSupported[i], txt);
-  }
+  for (i=0;i<params->deviceinfo.OperationsSupported_len;i++)
+    printf("   %04x: %s\n", params->deviceinfo.OperationsSupported[i], ptp_get_opcode_name(params, params->deviceinfo.OperationsSupported[i]));
   printf("Events supported:\n");
   if (params->deviceinfo.EventsSupported_len == 0) {
     printf("   None.\n");
   } else {
     for (i=0;i<params->deviceinfo.EventsSupported_len;i++) {
-      printf("   0x%04x\n", params->deviceinfo.EventsSupported[i]);
+      printf("   0x%04x (%s)\n", params->deviceinfo.EventsSupported[i], ptp_strerror(params->deviceinfo.EventsSupported[i], params->deviceinfo.VendorExtensionID));
     }
   }
   printf("Device Properties Supported:\n");

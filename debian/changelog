@@ -1,3 +1,9 @@
+libmtp (1.1.13-1) unstable; urgency=medium
+
+  * Imported Upstream version 1.1.13
+
+ -- Alessio Treglia <alessio@debian.org>  Sun, 16 Apr 2017 11:09:35 +0100
+
 libmtp (1.1.12-1) unstable; urgency=medium
 
   * Imported Upstream version 1.1.12

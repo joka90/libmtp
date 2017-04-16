@@ -29,8 +29,8 @@
 #ifndef LIBMTP_H_INCLUSION_GUARD
 #define LIBMTP_H_INCLUSION_GUARD
 
-#define LIBMTP_VERSION 1.1.12
-#define LIBMTP_VERSION_STRING "1.1.12"
+#define LIBMTP_VERSION 1.1.13
+#define LIBMTP_VERSION_STRING "1.1.13"
 
 /* This handles MSVC pecularities */
 #ifdef _MSC_VER
@@ -902,6 +902,9 @@ char const * LIBMTP_Get_Filetype_Description(LIBMTP_filetype_t);
 LIBMTP_file_t *LIBMTP_Get_Filelisting(LIBMTP_mtpdevice_t *);
 LIBMTP_file_t *LIBMTP_Get_Filelisting_With_Callback(LIBMTP_mtpdevice_t *,
       LIBMTP_progressfunc_t const, void const * const);
+
+#define LIBMTP_FILES_AND_FOLDERS_ROOT 0xffffffff
+
 LIBMTP_file_t * LIBMTP_Get_Files_And_Folders(LIBMTP_mtpdevice_t *,
 					     uint32_t const,
 					     uint32_t const);
