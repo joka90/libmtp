@@ -2,6 +2,7 @@ Source: libmtp
 Section: libs
 Priority: optional
 Maintainer: Alessio Treglia <alessio@debian.org>
+Uploaders: Michael Tokarev <mjt@tls.msk.ru>
 Build-Depends:
  autoconf,
  automake,
@@ -16,7 +17,7 @@ Build-Depends:
  libusb-dev [hurd-any],
  pkg-config,
  xsltproc
-Standards-Version: 3.9.6
+Standards-Version: 3.9.8
 Homepage: http://libmtp.sourceforge.net/
 Vcs-Git: git://anonscm.debian.org/collab-maint/libmtp.git
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/libmtp.git

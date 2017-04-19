@@ -61,12 +61,14 @@ libmtp.so.9 libmtp9 #MINVER#
  LIBMTP_Get_u32_From_Object@Base 1.1.0
  LIBMTP_Get_u64_From_Object@Base 1.1.0
  LIBMTP_Get_u8_From_Object@Base 1.1.0
+ LIBMTP_Handle_Events_Timeout_Completed@Base 1.1.12
  LIBMTP_Init@Base 1.1.0
  LIBMTP_Is_Property_Supported@Base 1.1.0
  LIBMTP_Number_Devices_In_List@Base 1.1.0
  LIBMTP_Open_Raw_Device@Base 1.1.0
  LIBMTP_Open_Raw_Device_Uncached@Base 1.1.0
  LIBMTP_Read_Event@Base 1.1.5
+ LIBMTP_Read_Event_Async@Base 1.1.12
  LIBMTP_Release_Device@Base 1.1.0
  LIBMTP_Release_Device_List@Base 1.1.0
  LIBMTP_Reset_Device@Base 1.1.0

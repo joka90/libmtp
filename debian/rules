@@ -84,7 +84,7 @@ ifneq (,$(findstring libmtp-doc, $(shell dh_listpackages)))
 endif
 	dh_install
 
-override_dh_installdeb:
+override_dh_installdeb-arch:
 ifeq (linux,$(DEB_HOST_ARCH_OS))
 	echo "udev=udev" >> debian/libmtp$(SOVERSION).substvars
 endif
