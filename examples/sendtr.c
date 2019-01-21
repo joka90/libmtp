@@ -29,12 +29,15 @@
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
 
+#include "common.h"
 #include <string.h>
 #include <libgen.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include "common.h"
+#ifdef HAVE_LANGINFO_H
+#include <langinfo.h>
+#endif
 #include "libmtp.h"
 #include "pathutils.h"
 
@@ -42,16 +45,42 @@ extern LIBMTP_folder_t *folders;
 extern LIBMTP_file_t *files;
 extern LIBMTP_mtpdevice_t *device;
 
-int sendtrack_function (char *, char *, char *, char *, char *, char *, uint16_t, uint16_t, uint16_t);
+int sendtrack_function (char *, char *, char *, char *, char *, char *, char *, char *, uint16_t, uint16_t, uint16_t);
 void sendtrack_command (int, char **);
 void sendtrack_usage (void);
 
 void sendtrack_usage (void)
 {
-  fprintf(stderr, "usage: sendtr [ -D debuglvl ] [ -q ] -t <title> -a <artist> -l <album>\n");
-  fprintf(stderr, "       -c <codec> -g <genre> -n <track number> -y <year> \n");
+  fprintf(stderr, "usage: sendtr [ -D debuglvl ] [ -q ]\n");
+  fprintf(stderr, "-t <title> -a <artist> -A <Album artist> -w <writer or composer>\n");
+  fprintf(stderr, "    -l <album> -c <codec> -g <genre> -n <track number> -y <year>\n");
   fprintf(stderr, "       -d <duration in seconds> <local path> <remote path>\n");
   fprintf(stderr, "(-q means the program will not ask for missing information.)\n");
+}
+
+static void checklang(void)
+{
+  char *langsuff = NULL;
+  char *lang = getenv("LANG");
+
+#ifdef HAVE_LANGINFO_H
+  langsuff = nl_langinfo(CODESET);
+#else
+  /*
+   * Check environment variables $LANG and $LC_CTYPE
+   * to see if we want to support UTF-8 unicode
+   */
+  if (lang != NULL) {
+    if (strlen(lang) > 5) {
+      langsuff = &lang[strlen(lang)-5];
+    }
+  }
+#endif
+  if (strcmp(langsuff, "UTF-8")) {
+    printf("Your system does not appear to have UTF-8 enabled ($LANG=\"%s\")\n", lang);
+    printf("If you want to have support for diacritics and Unicode characters,\n");
+    printf("please switch your locale to an UTF-8 locale, e.g. \"en_US.UTF-8\".\n");
+  }
 }
 
 static char *prompt (const char *prompt, char *buffer, size_t bufsz, int required)
@@ -91,10 +120,14 @@ static int add_track_to_album(LIBMTP_album_t *albuminfo, LIBMTP_track_t *trackme
   /* Look for the album */
   album = LIBMTP_Get_Album_List(device);
   while(album != NULL) {
-    if (album->name != NULL &&
+    if ((album->name != NULL &&
 	album->artist != NULL &&
 	!strcmp(album->name, albuminfo->name) &&
-	!strcmp(album->artist, albuminfo->artist)) {
+	!strcmp(album->artist, albuminfo->artist)) ||
+	  (album->name != NULL &&
+	album->composer != NULL &&
+	!strcmp(album->name, albuminfo->name) &&
+	!strcmp(album->composer, albuminfo->composer))) {
       /* Disconnect this album for later use */
       found_album = album;
       album = album->next;
@@ -133,8 +166,9 @@ static int add_track_to_album(LIBMTP_album_t *albuminfo, LIBMTP_track_t *trackme
     *trackid = trackmeta->item_id;
     albuminfo->tracks = trackid;
     albuminfo->no_tracks = 1;
+    albuminfo->storage_id = trackmeta->storage_id;
     printf("Album doesn't exist: creating...\n");
-    ret = LIBMTP_Create_New_Album(device, albuminfo, 0);
+    ret = LIBMTP_Create_New_Album(device, albuminfo);
     /* albuminfo will be destroyed later by caller */
   }
   
@@ -145,12 +179,13 @@ static int add_track_to_album(LIBMTP_album_t *albuminfo, LIBMTP_track_t *trackme
   } else {
     printf("success!\n");
   }
+  return ret;
 }
 
-int sendtrack_function(char * from_path, char * to_path, char *partist, char *ptitle, char *pgenre, char *palbum, uint16_t tracknum, uint16_t length, uint16_t year)
+int sendtrack_function(char * from_path, char * to_path, char *partist, char *palbumartist, char *ptitle, char *pgenre, char *palbum, char *pcomposer, uint16_t tracknum, uint16_t length, uint16_t year)
 {
   char *filename, *parent;
-  char artist[80], title[80], genre[80], album[80];
+  char artist[80], albumartist[80], title[80], genre[80], album[80], composer[80];
   char num[80];
   uint64_t filesize;
   uint32_t parent_id = 0;
@@ -191,16 +226,8 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pt
     filesize = (uint64_t) sb.st_size;
 #endif
     trackmeta->filetype = find_filetype (from_path);
-    if ((trackmeta->filetype != LIBMTP_FILETYPE_MP3) 
-	&& (trackmeta->filetype != LIBMTP_FILETYPE_WAV) 
-	&& (trackmeta->filetype != LIBMTP_FILETYPE_OGG)
-	&& (trackmeta->filetype != LIBMTP_FILETYPE_MP4) 
-	&& (trackmeta->filetype != LIBMTP_FILETYPE_AAC) 
-	&& (trackmeta->filetype != LIBMTP_FILETYPE_M4A) 
-	&& (trackmeta->filetype != LIBMTP_FILETYPE_FLAC) 
-	&& (trackmeta->filetype != LIBMTP_FILETYPE_WMA)) {
-      printf("Not a valid codec: \"%s\"\n", LIBMTP_Get_Filetype_Description(trackmeta->filetype));
-      printf("Supported formats: MP3, WAV, OGG, MP4, AAC, M4A, FLAC, WMA\n");
+    if (!LIBMTP_FILETYPE_IS_TRACK(trackmeta->filetype)) {
+      printf("Not a valid track codec: \"%s\"\n", LIBMTP_Get_Filetype_Description(trackmeta->filetype));
       return 1;
     }
 
@@ -216,11 +243,20 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pt
     if (!strlen(palbum))
       palbum = NULL;
 
+    if (palbumartist == NULL) {
+      palbumartist = prompt("Album artist", albumartist, 80, 0);
+    }
     if (partist == NULL) {
       partist = prompt("Artist", artist, 80, 0);
     }
     if (!strlen(partist))
       partist = NULL;
+
+    if (pcomposer == NULL) {
+      pcomposer = prompt("Writer or Composer", composer, 80, 0);
+    }
+    if (!strlen(pcomposer))
+      pcomposer = NULL;
 
     if (pgenre == NULL) {
       pgenre = prompt("Genre", genre, 80, 0);
@@ -272,10 +308,21 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pt
       trackmeta->album = strdup(palbum);
       albuminfo->name = strdup(palbum);
     }
+    if (palbumartist) {
+      printf("Album artist:    %s\n", palbumartist);
+      albuminfo->artist = strdup(palbumartist);
+    }
     if (partist) {
       printf("Artist:    %s\n", partist);
       trackmeta->artist = strdup(partist);
+      if (palbumartist == NULL)
       albuminfo->artist = strdup(partist);
+    }
+
+    if (pcomposer) {
+      printf("Writer or Composer:    %s\n", pcomposer);
+      trackmeta->composer = strdup(pcomposer);
+      albuminfo->composer = strdup(pcomposer);
     }
     if (pgenre) {
       printf("Genre:     %s\n", pgenre);
@@ -303,9 +350,12 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pt
       trackmeta->filename = strdup(filename);
     }
     trackmeta->filesize = filesize;
+    trackmeta->parent_id = parent_id;
+    // Use default storage.
+    trackmeta->storage_id = 0;
       
     printf("Sending track...\n");
-    ret = LIBMTP_Send_Track_From_File(device, from_path, trackmeta, progress, NULL, parent_id);
+    ret = LIBMTP_Send_Track_From_File(device, from_path, trackmeta, progress, NULL);
     printf("\n");
     if (ret != 0) {
       printf("Error sending track.\n");
@@ -314,6 +364,9 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pt
     } else {
       printf("New track ID: %d\n", trackmeta->item_id);
     }
+
+/* Add here add to album call */
+		ret = add_track_to_album(albuminfo, trackmeta);
 
     LIBMTP_destroy_album_t(albuminfo);
     LIBMTP_destroy_track_t(trackmeta);
@@ -328,6 +381,8 @@ void sendtrack_command (int argc, char **argv) {
   extern int optind;
   extern char *optarg;
   char *partist = NULL;
+  char *palbumartist = NULL;
+  char *pcomposer = NULL;
   char *ptitle = NULL;
   char *pgenre = NULL;
   char *pcodec = NULL;
@@ -337,13 +392,19 @@ void sendtrack_command (int argc, char **argv) {
   uint16_t year = 0;
   uint16_t quiet = 0;
   char *lang;
-  while ( (opt = getopt(argc, argv, "qD:t:a:l:c:g:n:d:y:")) != -1 ) {
+  while ( (opt = getopt(argc, argv, "qD:t:a:A:w:l:c:g:n:d:y:")) != -1 ) {
     switch (opt) {
     case 't':
       ptitle = strdup(optarg);
       break;
     case 'a':
       partist = strdup(optarg);
+      break;
+    case 'A':
+      palbumartist = strdup(optarg);
+      break;
+    case 'w':
+      pcomposer = strdup(optarg);
       break;
     case 'l':
       palbum = strdup(optarg);
@@ -377,22 +438,9 @@ void sendtrack_command (int argc, char **argv) {
     printf("You need to pass a filename and destination.\n");
     sendtrack_usage();
   }
-  /*
-   * Check environment variables $LANG and $LC_CTYPE
-   * to see if we want to support UTF-8 unicode
-   */
-  lang = getenv("LANG");
-  if (lang != NULL) {
-    if (strlen(lang) > 5) {
-      char *langsuff = &lang[strlen(lang)-5];
-      if (strcmp(langsuff, "UTF-8")) {
-	printf("Your system does not appear to have UTF-8 enabled ($LANG=\"%s\")\n", lang);
-	printf("If you want to have support for diacritics and Unicode characters,\n");
-	printf("please switch your locale to an UTF-8 locale, e.g. \"en_US.UTF-8\".\n");
-      }
-    }
-  }
+
+  checklang();
   
-  printf("%s,%s,%s,%s,%s,%s,%d%d,%d\n",argv[0],argv[1],partist,ptitle,pgenre,palbum,tracknum, length, year);
-  sendtrack_function(argv[0],argv[1],partist,ptitle,pgenre,palbum, tracknum, length, year);
+  printf("%s,%s,%s,%s,%s,%s,%s,%s,%d%d,%d\n",argv[0],argv[1],partist,palbumartist,ptitle,pgenre,palbum,pcomposer,tracknum, length, year);
+  sendtrack_function(argv[0],argv[1],partist,palbumartist,ptitle,pgenre,palbum,pcomposer, tracknum, length, year);
 }

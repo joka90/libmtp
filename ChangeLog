@@ -1,3 +1,202 @@
+2008-06-24  Linus Walleij <triad@df.lth.se>
+
+	* TODO: updates.
+	* src/Makefile.am: bump interface to libmtp.so.8.0.0.
+	  It's NOT compatible!
+	* RELEASE libmtp 0.3.0 and let the apps developers have
+	  their apps fixed!
+	
+2008-06-22  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.h.in: removed the parenthandle argument from
+	  LIBMTP_Send_File_From_File(),
+	  LIBMTP_Send_File_From_File_Descriptor(),
+	  LIBMTP_Send_Track_From_File(),
+	  LIBMTP_Send_Track_From_File_Descriptor(),
+	  LIBMTP_Create_New_Playlist() and
+	  LIBMTP_Create_New_Album()
+	  Now you must pass in parent ID from a metadata or
+	  filedata set. Use the respective field of the
+	  file, track, playlist or album struct to pass in
+	  a parent handle when calling these functions from
+	  now on. The bonus for changing your code is that you
+	  can now also pass in a storage_id with any metadata
+	  set! Consequently LIBMTP_Create_Folder() was
+	  altered to accept THREE metadata arguments: name,
+	  parent_id and storage_id. All calls to any of these
+	  functions in any referring code need to be altered to
+	  use this scheme. It should be quite self-evident for
+	  most code and easy to perform.
+	* src/libmtp.c: changed outlined above were implemented.
+	* examples/newfolder.c: consequental changes.
+	* examples/sendfile.c: consequental changes.
+	* examples/sendtr.c: consequental changes.
+	* examples/albumart.c: consequental changes.
+	* examples/newplaylist.c: consequental changes.
+	* examples/files.c: consequental changes.
+	* examples/tracks.c: correct misleading strings.
+
+2008-06-15  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: only look for default folders in the
+	  root folder on the primary storage, even.
+
+2008-06-14  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: only look for default folders in the
+	  primary storage, and only try to put files there
+	  if they are targetting the primary storage.
+	
+2008-06-08  Linus Walleij <triad@df.lth.se>
+
+	* configure.ac: check for the langinfo.h header.
+	* examples/connect.c: check charset properly.
+	* examples/sendtr.c: dito.
+	* src/music-players.h: new devices galore.
+	
+2008-06-03  Linus Walleij <triad@df.lth.se>
+
+	* src/device-flags.h: new device flag for devices that
+	  always need to have their device descriptor probed.
+	* src/music-players.h: generously add this flag to all
+	  SanDisk devices. The e280v2 and Fuze are known to be
+	  especially problematic.
+	* src/libusb-glue.h: helper macro.
+	* src/libusb-glue.c: massage "OS Descriptor" on demand
+	  when opening the device.
+	* src/music-players.h: detailed info and flags for the
+	  SanDisk Sansa players. More to be done, probably.
+
+2008-06-02  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.c: refactor PTP_USB to use the raw
+	  device and its contained deviceinfo to store and
+	  retrieve the device flags. (This is starting to look
+	  object oriented...)
+	* src/libusb-glue.h: accessor functions to simplify
+	  switching on the device flags and increase the code
+	  readability.
+	* src/libmtp.c: use the new accessor functions.
+	
+2008-06-01  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: use LIBMTP_Detect_Raw_Devices() and
+	  LIBMTP_Open_Raw_Device() inside 
+	  LIBMTP_Get_First_Device() refactoring. Move
+	  params creation into this file.
+	* src/libusb-glue.c: move params creation away
+	  from here.
+
+2008-05-30  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.c: unused variable.
+	* examples/detect.c: switch to using raw device
+	  interface for opening devices.
+
+2008-05-28  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: internally using the raw devices to
+	  get a list of devices.
+	* src/ptp.c: sync to upstream.
+	* src/ptp.h: dito.
+	* src/ptp-pack.c: dito.
+	* src/libmtp.h.in: move raw device detection to use
+	  error codes. Add interface to open a raw device!
+	* src/libusb-glue.h: make the old device list internal,
+	  use raw device in interface for configuring USB.
+	* src/libusb-glue.c: fix up error messages. Move the
+	  raw device detection interface to use error codes.
+	* examples/detect.c: fix up error messages. Use error
+	  codes for raw devices.
+
+2008-05-23  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: after sending a file, look up the
+	  resulting file metadata from the cache to make sure
+	  that parent_id is identical to that the file actually
+	  gets on the device. If root folder (0) is selected, we
+	  hardcode thing to 0xffffffffu to be used as parent,
+	  but it will probably end up being 0 for example.
+	  Also fix an issue with ptp_mtp_getobjectproplist()
+	  sometimes returning a NULL pointer while still
+	  claiming there are props in the list.
+	* src/libusb-glue.h: add a function to get the preferred
+	  playlist extension.
+	* src/libusb-glue.c: "written" variable in
+	  ptp_usb_sendreq() may end up uninitialized if
+	  ptp_write_func() fails. Initialize it to 0.
+	  Get the prefered playlist extension.
+
+2008-05-18  Richard Low <richard@wentnet.com>
+
+	* src/device-flags.h: added
+	  DEVICE_FLAG_BROKEN_SET_SAMPLE_DIMENSIONS device flag
+	* src/music-players.h: ditto. Also set Samsung YH-999 to
+ 	  DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL based on users
+	  experience.
+	* src/libmtp.c: added
+          DEVICE_FLAG_BROKEN_SET_SAMPLE_DIMENSIONS device flag
+
+2008-05-05  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.c: assign device name and flags to
+	  detected raw devices, slowly preparing to move to 
+	  using the raw device detection internally as well.
+
+2008-05-04  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.h.in: move useful filetype macros here so
+	  external programs can use them.
+	* src/libmtp.c: consequental changes.
+	* examples/sendtr.c: use the new macro to detect track
+	  content.
+
+2008-05-03  Johannes Huber <johub1180@gmx.at>
+
+	* src/libmtp.h.in: add interface for setting album composer,
+	  needed for classical albums, on abstract albums.
+	* src/libmtp.c: implement it.
+	* examples/albums.c: consequental changes.
+	* examples/connect.c: dito.
+	* examples/sendtr.c: dito.
+	* examples/tracks.c: dito.
+	* AUTHORS: new contributor.
+
+2008-04-27  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: recognize audio files as tracks, since this
+	  is what WMP does. (e.g. it sets playlength on movies
+	  to enable skip bar) also define macros for audio/video/both
+	  types and tidy up a bit.
+
+2008-04-24  Linus Walleij <triad@df.lth.se>
+	
+	* src/libmtp.h.in: added preliminary interface for getting
+	  raw devices.
+	* src/libusb-glue.c: the implementation is all here!
+	* src/libusb-glue.h: add some bus and device fields to the
+	  internal device list.
+	* examples/detect.c: exercise the raw device detection code.
+	
+2008-03-26  Linus Walleij <triad@df.lth.se>
+
+	* examples/pathutils.c: fix a folder identification bug,
+	  courtesy of Dr Nicholas Jacobs.
+
+2008-03-12  Linus Walleij <triad@df.lth.se>
+
+	* configure.ac: bad mailing list address. (Marcus) Bump to
+	  version 0.3.0.
+	* examples/hotplug.c: switch from using "info.bus" to
+	  using "info.subsystem" to identify USB events. (Marcus).
+	* src/libmtp.c: add parent_id to albums and playlists,
+	  based on a patch by Ali Shah.
+	* src/libmtp.h.in: dito.
+	* examples/playlists.c: consequental changes.
+	* examples/albums.c: consequental changes.
+	* This will be a new major revision of the API/ABI no
+	  matter what.
+
 2008-03-08  Linus Walleij <triad@df.lth.se>
 
 	* src/libusb-glue.c: left debug prints on :-(
