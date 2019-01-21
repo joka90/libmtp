@@ -1323,7 +1323,7 @@ typedef struct _PTPCanon_Property {
 #define PTP_OPC_DisplayName				0xDCE0
 #define PTP_OPC_BodyText				0xDCE1
 #define PTP_OPC_Subject					0xDCE2
-#define PTP_OPC_Prority					0xDCE3
+#define PTP_OPC_Priority				0xDCE3
 #define PTP_OPC_GivenName				0xDD00
 #define PTP_OPC_MiddleNames				0xDD01
 #define PTP_OPC_FamilyName				0xDD02
@@ -1754,6 +1754,12 @@ ptp_render_property_value(PTPParams* params, uint16_t dpc,
 int ptp_render_ofc(PTPParams* params, uint16_t ofc, int spaceleft, char *txt);
 int ptp_render_opcode(PTPParams* params, uint16_t opcode, int spaceleft, char *txt);
 int ptp_render_mtp_propname(uint16_t propid, int spaceleft, char *txt);
+MTPProperties *ptp_get_new_object_prop_entry(MTPProperties **props, int *nrofprops);
+void ptp_destroy_object_prop(MTPProperties *prop);
+void ptp_destroy_object_prop_list(MTPProperties *props, int nrofprops);
+MTPProperties *ptp_find_object_prop_in_cache(PTPParams *params, uint32_t const handle, uint32_t const attribute_id);
+void ptp_remove_object_from_cache(PTPParams *params, uint32_t handle);
+uint16_t ptp_add_object_to_cache(PTPParams *params, uint32_t handle);
 
 /* ptpip.c */
 void ptp_nikon_getptpipguid (unsigned char* guid);
