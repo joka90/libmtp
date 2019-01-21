@@ -29,8 +29,8 @@
 #ifndef LIBMTP_H_INCLUSION_GUARD
 #define LIBMTP_H_INCLUSION_GUARD
 
-#define LIBMTP_VERSION 0.3.3
-#define LIBMTP_VERSION_STRING "0.3.3"
+#define LIBMTP_VERSION 0.3.4
+#define LIBMTP_VERSION_STRING "0.3.4"
 
 /* This handles MSVC pecularities */
 #ifdef _MSC_VER
