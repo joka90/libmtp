@@ -1,3 +1,96 @@
+2008-09-25  Linus Walleij <triad@df.lth.se>
+
+	* configure.ac: bump to 0.3.3.
+	* src/Makefile.am: interface to .so.8.1.0
+	* Release as 0.3.3.
+	
+2008-09-24  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.h.in: add new filename setting functions, patch
+	  from Florent Mertens <flomertens@gmail.com>.
+	* src/libmtp.c: implementation.
+	* src/playlist-spl.c: consequental changes.
+	* src/libmtp.sym: consequental changes.
+	* Fixup patch from Alvin later this day.
+	* Note to self: remember to bump soname to .so.8.1.0.
+
+2008-09-23  Richard Low <richard@wentnet.com>
+
+	* src/libmtp.c: check for NULL storage
+	* src/libusb-glue.c: return PTP_RC_OK on zero read
+	* src/music-players.h: give Samsung YP-10 DEVICE_FLAG_NO_ZERO_READS
+
+2008-09-22  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: make sure we don't try to fit a new file onto
+	  a ROM storage. Add some pretty-print to FourCC codecs so
+	  you can actually understand the enumerations.
+
+2008-09-20  Joe Nahmias <joe@nahmias.net>
+
+	* examples/sendtr.c: added option to specify which 
+	  storage_id the track should be copied.
+
+2008-09-20  Linus Walleij <triad@df.lth.se>
+
+	* configure.ac: bump to 0.3.2.
+	* src/Makefile.am: bump to libmtp.so.8.0.2, compatible
+	  interface.
+	* Release this as 0.3.2 mainly to get the Creative fixes out.
+
+2008-09-17  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.h.in: new helper macros from
+	  Alvin <alvinbeach@gmail.com> plus some docs.
+
+2008-09-12  Linus Walleij <triad@df.lth.se>
+
+	* src/music-players.h: drop bug flags off the Creative devices.
+	  I am confident that the bugs they were masking have been
+	  fixed now.
+
+2008-09-07  Richard Low <richard@wentnet.com>
+
+	* src/music-players.h: added Panasonic P905i
+
+2008-09-05  Marcus Meissner <meissner@suse.de>
+
+	* src/libmtp.sym: update symbol export table.
+	* src/Makefile.am: fix up some magic for symbol export.
+
+2008-09-04  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: look up the filename for playlists if the name is 
+	  missing or not properly set. Not doing the same for albums -
+	  these must have proper metadata.
+	* src/music-players.h: more players as usual.
+	* examples/sendtr.c: more warnings.
+
+2008-08-31  Linus Walleij <triad@df.lth.se>
+
+	* src/ptp.h: sync to upstream.
+	* src/ptp.c: sync to upstream.
+
+2008-08-30  Chris Bagwell <chris@cnpbagwell.com>
+
+	* src/libusb-glue.c: make it possible to have per-command
+	  or otherwise altered timeout values for different PTP
+	  request/response sequences.
+	* src/libusb-glue.h: dito.
+	* src/libmtp.c: increase USB timeout to 30s when getting
+	  a complete track listing off the device.
+	* src/music-players.h: as a consequence, the Sirus Stiletto
+	  no longer needs any brokenness flag.
+
+2008-08-30  Linus Walleij <triad@df.lth.se>
+
+	* src/ptp.c: sync to upstream.
+
+2008-08-28  Linus Walleij <triad@df.lth.se>
+
+	* examples/sendtr.c: fix non-strdup():ed strings to be
+	  copied, patch courtesy of Juanan Pereira.
+
 2008-08-25  Linus Walleij <triad@df.lth.se>
 
 	* src/Makefile.am: bump interface a patchlevel. (Fully

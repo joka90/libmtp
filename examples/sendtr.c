@@ -10,6 +10,7 @@
  * Copyright (C) 2003-2005 Enrique Jorrete Ledesma
  * Copyright (C) 2006 Chris A. Debenham <chris@adebenham.com>
  * Copyright (C) 2008 Nicolas Pennequin <nicolas.pennequin@free.fr>
+ * Copyright (C) 2008 Joseph Nahmias <joe@nahmias.net>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -46,7 +47,7 @@ extern LIBMTP_folder_t *folders;
 extern LIBMTP_file_t *files;
 extern LIBMTP_mtpdevice_t *device;
 
-int sendtrack_function (char *, char *, char *, char *, char *, char *, char *, char *, uint16_t, uint16_t, uint16_t);
+int sendtrack_function (char *, char *, char *, char *, char *, char *, char *, char *, uint16_t, uint16_t, uint16_t, uint32_t);
 void sendtrack_command (int, char **);
 void sendtrack_usage (void);
 
@@ -55,7 +56,7 @@ void sendtrack_usage (void)
   fprintf(stderr, "usage: sendtr [ -D debuglvl ] [ -q ]\n");
   fprintf(stderr, "-t <title> -a <artist> -A <Album artist> -w <writer or composer>\n");
   fprintf(stderr, "    -l <album> -c <codec> -g <genre> -n <track number> -y <year>\n");
-  fprintf(stderr, "       -d <duration in seconds> <local path> <remote path>\n");
+  fprintf(stderr, "       -d <duration in seconds> -s <storage_id> <local path> <remote path>\n");
   fprintf(stderr, "(-q means the program will not ask for missing information.)\n");
 }
 
@@ -150,6 +151,7 @@ static int add_track_to_album(LIBMTP_album_t *albuminfo, LIBMTP_track_t *trackme
   
   if (ret != 0) {
     printf("Error creating or updating album.\n");
+    printf("(This could be due to that your device does not support albums.)\n");
     LIBMTP_Dump_Errorstack(device);
     LIBMTP_Clear_Errorstack(device);
   } else {
@@ -158,7 +160,7 @@ static int add_track_to_album(LIBMTP_album_t *albuminfo, LIBMTP_track_t *trackme
   return ret;
 }
 
-int sendtrack_function(char * from_path, char * to_path, char *partist, char *palbumartist, char *ptitle, char *pgenre, char *palbum, char *pcomposer, uint16_t tracknum, uint16_t length, uint16_t year)
+int sendtrack_function(char * from_path, char * to_path, char *partist, char *palbumartist, char *ptitle, char *pgenre, char *palbum, char *pcomposer, uint16_t tracknum, uint16_t length, uint16_t year, uint32_t storageid)
 {
   char *filename, *parent;
   char artist[80], albumartist[80], title[80], genre[80], album[80], composer[80];
@@ -179,8 +181,8 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pa
   trackmeta = LIBMTP_new_track_t();
   albuminfo = LIBMTP_new_album_t();
 
-  parent = dirname(to_path);
-  filename = basename(to_path);
+  parent = dirname(strdup(to_path));
+  filename = basename(strdup(to_path));
   parent_id = parse_path (parent,files,folders);
   if (parent_id == -1) {
     printf("Parent folder could not be found, skipping\n");
@@ -327,8 +329,33 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pa
     }
     trackmeta->filesize = filesize;
     trackmeta->parent_id = parent_id;
-    // Use default storage.
-    trackmeta->storage_id = 0;
+    {
+        int rc;
+        char *desc = NULL;
+        LIBMTP_devicestorage_t *pds = NULL;
+
+        if ( 0 != (rc=LIBMTP_Get_Storage(device, LIBMTP_STORAGE_SORTBY_NOTSORTED)) )
+        {
+            perror("LIBMTP_Get_Storage()");
+            exit(-1);
+        }
+        for (pds = device->storage; pds != NULL; pds = pds->next)
+        {
+            if (pds->id == storageid)
+            {
+                desc = strdup(pds->StorageDescription);
+                break;
+            }
+        }
+        if (NULL != desc)
+        {
+            printf("Storage ID: %s (%u)\n", desc, storageid);
+            free(desc);
+        }
+        else
+            printf("Storage ID: %u\n", storageid);
+        trackmeta->storage_id = storageid;
+    }
       
     printf("Sending track...\n");
     ret = LIBMTP_Send_Track_From_File(device, from_path, trackmeta, progress, NULL);
@@ -341,8 +368,8 @@ int sendtrack_function(char * from_path, char * to_path, char *partist, char *pa
       printf("New track ID: %d\n", trackmeta->item_id);
     }
 
-/* Add here add to album call */
-		ret = add_track_to_album(albuminfo, trackmeta);
+    /* Add here add to album call */
+    ret = add_track_to_album(albuminfo, trackmeta);
 
     LIBMTP_destroy_album_t(albuminfo);
     LIBMTP_destroy_track_t(trackmeta);
@@ -367,8 +394,8 @@ void sendtrack_command (int argc, char **argv) {
   uint16_t length = 0;
   uint16_t year = 0;
   uint16_t quiet = 0;
-  char *lang;
-  while ( (opt = getopt(argc, argv, "qD:t:a:A:w:l:c:g:n:d:y:")) != -1 ) {
+  uint32_t storageid = 0;
+  while ( (opt = getopt(argc, argv, "qD:t:a:A:w:l:c:g:n:d:y:s:")) != -1 ) {
     switch (opt) {
     case 't':
       ptitle = strdup(optarg);
@@ -394,6 +421,9 @@ void sendtrack_command (int argc, char **argv) {
     case 'n':
       tracknum = atoi(optarg);
       break;
+    case 's':
+      storageid = (uint32_t) strtoul(optarg, NULL, 0);
+      break;
     case 'd':
       length = atoi(optarg);
       break;
@@ -417,6 +447,6 @@ void sendtrack_command (int argc, char **argv) {
 
   checklang();
   
-  printf("%s,%s,%s,%s,%s,%s,%s,%s,%d%d,%d\n",argv[0],argv[1],partist,palbumartist,ptitle,pgenre,palbum,pcomposer,tracknum, length, year);
-  sendtrack_function(argv[0],argv[1],partist,palbumartist,ptitle,pgenre,palbum,pcomposer, tracknum, length, year);
+  printf("%s,%s,%s,%s,%s,%s,%s,%s,%d%d,%d,%u\n",argv[0],argv[1],partist,palbumartist,ptitle,pgenre,palbum,pcomposer,tracknum, length, year, storageid);
+  sendtrack_function(argv[0],argv[1],partist,palbumartist,ptitle,pgenre,palbum,pcomposer, tracknum, length, year, storageid);
 }
