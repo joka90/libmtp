@@ -1,3 +1,31 @@
+2007-08-07  Linus Walleij <triad@df.lth.se>
+
+	* configure.ac: bump to 0.2.1.
+	* src/Makefile.am: interface to libmtp.so.6.0.1.
+	* Release libmtp 0.2.1!
+
+2007-08-06  Linus Walleij <triad@df.lth.se>
+
+	* configure.ac: tag on the large file support compilation flag.
+	* src/libmtp.c: smack up the data file transfer function so it
+	  works again and *finally* should support 64bit sizes!
+	  Then wrapped the track sending function around the file
+	  sending function so there is no more pointless code duplication
+	  giving rise to ever more bugs. Enable LFS, Large File Support so
+	  we can handle 64bit files properly.
+	* examples/sendtr.c: shape up print-outs, LFS support.
+	* examples/sendfile.c: dito.
+
+2007-08-06  Linus Walleij <triad@df.lth.se>
+
+	* src/ptp.c: fixed a stray error print bug.
+	* src/libmtp.c: overhaul of all proplist setting to follow the same
+	  design pattern. Probably fixed a few opd memory leaks along the road.
+
+2007-08-05  Richard Low <richard@wentnet.com>
+
+	* src/libmtp.c: send 64 bit filesize
+
 2007-08-04  Linus Walleij <triad@df.lth.se>
 
 	* src/libmtp.c: fix up the 64bit filesize and tracksize support.
@@ -6,6 +34,7 @@
 	  libmtp.so.6 now.
 	* configure.ac: bump library revision to 0.2.0.
 	* examples/hotplug.c: switch to use ATTR{} instead of SYSFS{}
+	* Release libmtp 0.2.0!
 
 2007-08-04  Richard Low <richard@wentnet.com>
 

@@ -1,6 +1,6 @@
 # Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.52)
-AC_INIT([libmtp], [0.2.0], [libmtp-users@lists.sourceforge.net])
+AC_INIT([libmtp], [0.2.1], [libmtp-users@lists.sourceforge.net])
 AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_SRCDIR([src/libmtp.c])
 AM_CONFIG_HEADER(config.h)
@@ -81,6 +81,8 @@ AC_FUNC_STAT
 AC_CHECK_FUNCS(basename memset select strdup strerror strrchr strtoul usleep)
 
 # Switches.
+# Enable LFS (Large File Support)
+CFLAGS="$CFLAGS -D_FILE_OFFSET_BITS=64"
 # Stick in "-Werror" if you want to be more aggressive.
 # (No need to use AC_SUBST on this default substituted environment variable.)
 CFLAGS="$CFLAGS -Wall -Wmissing-prototypes"
