@@ -55,8 +55,8 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(includedir)"
 libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libmtp_la_LIBADD =
-am_libmtp_la_OBJECTS = libmtp.lo unicode.lo util.lo libusb-glue.lo \
-	ptp.lo
+am_libmtp_la_OBJECTS = libmtp.lo unicode.lo util.lo playlist-spl.lo \
+	libusb-glue.lo ptp.lo
 libmtp_la_OBJECTS = $(am_libmtp_la_OBJECTS)
 libmtp_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
@@ -194,10 +194,10 @@ target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 lib_LTLIBRARIES = libmtp.la
-libmtp_la_SOURCES = libmtp.c unicode.c unicode.h util.c util.h \
+libmtp_la_SOURCES = libmtp.c unicode.c unicode.h util.c util.h playlist-spl.c \
 	libusb-glue.c libusb-glue.h \
 	gphoto2-endian.h libptp-stdint.h ptp.c ptp.h \
-	music-players.h device-flags.h
+	music-players.h device-flags.h playlist-spl.h
 
 include_HEADERS = libmtp.h
 EXTRA_DIST = libmtp.h.in libmtp.sym ptp-pack.c
@@ -226,7 +226,7 @@ EXTRA_DIST = libmtp.h.in libmtp.sym ptp-pack.c
 # ---------------------------------------------------------------------------
 CURRENT = 8
 AGE = 0
-REVISION = 0
+REVISION = 1
 SOVERSION = $(CURRENT):$(REVISION):$(AGE)
 @COMPILE_MINGW32_TRUE@noinst_DATA = libmtp.lib
 @COMPILE_MINGW32_TRUE@W32LF = -export-dynamic -no-undefined -export-symbols libmtp.sym
@@ -304,6 +304,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libmtp.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libusb-glue.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/playlist-spl.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ptp.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unicode.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/util.Plo@am__quote@

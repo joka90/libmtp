@@ -41,7 +41,14 @@
  * DEVICE_FLAG_BROKEN_MTPGETOBJECTPROPLIST which only signify
  * that it's broken when getting metadata for a SINGLE object.
  * A typical way the implementation may be broken is that it 
- * may not return a proper count of the objects.
+ * may not return a proper count of the objects, and sometimes
+ * (like on the ZENs) objects are simply missing from the list
+ * if you use this. Sometimes it has been used incorrectly to
+ * mask bugs in the code (like handling transactions of data
+ * with size given to -1 (0xFFFFFFFFU), in that case please
+ * help us remove it now the code is fixed. Sometimes this is
+ * used because getting all the objects is just too slow and
+ * the USB transaction will time out if you use this command.
  */
 #define DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL 0x00000001
 /**
@@ -89,6 +96,10 @@
  * The error has only been seen on iriver devices. Turning this
  * flag on won't hurt anything, just that the check against
  * filename extension will be done for files of "unknown" type.
+ * If the player does not even know (reports) that it supports
+ * ogg even though it does, please use the stronger 
+ * OGG_IS_UNKNOWN flag, which will forcedly support ogg on
+ * anything with the .ogg filename extension.
  */
 #define DEVICE_FLAG_IRIVER_OGG_ALZHEIMER 0x00000010
 /**
@@ -136,7 +147,9 @@
  * and a need to report the Ogg support (the device itself does
  * not properly claim to support it) and need to set filetype 
  * to unknown when storing Ogg files, even though they're not
- * actually unknown.
+ * actually unknown. Later iRivers seem to need this flag since
+ * they do not report to support OGG even though they actually
+ * do.
  */
 #define DEVICE_FLAG_OGG_IS_UNKNOWN 0x00000200
 /**
@@ -153,3 +166,20 @@
  * This flag provides that extra massage.
  */
 #define DEVICE_FLAG_ALWAYS_PROBE_DESCRIPTOR 0x00000800
+/**
+ * Samsung has implimented its own playlist format as a .spl file
+ * stored in the normal file system, rather than a proper mtp
+ * playlist. There are multiple versions of the .spl format
+ * identified by a line in the file: VERSION X.XX
+ * Version 1.00 is just a simple playlist.
+ */
+#define DEVICE_FLAG_PLAYLIST_SPL_V1 0x00001000
+/**
+ * Samsung has implimented its own playlist format as a .spl file
+ * stored in the normal file system, rather than a proper mtp
+ * playlist. There are multiple versions of the .spl format
+ * identified by a line in the file: VERSION X.XX
+ * Version 2.00 is playlist but allows DNSe sound settings
+ * to be stored, per playlist.
+ */
+#define DEVICE_FLAG_PLAYLIST_SPL_V2 0x00002000

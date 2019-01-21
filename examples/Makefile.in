@@ -51,69 +51,69 @@ CONFIG_CLEAN_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
-am_albumart_OBJECTS = albumart.$(OBJEXT)
+am_albumart_OBJECTS = albumart.$(OBJEXT) util.$(OBJEXT)
 albumart_OBJECTS = $(am_albumart_OBJECTS)
 albumart_LDADD = $(LDADD)
 albumart_DEPENDENCIES = ../src/libmtp.la
-am_albums_OBJECTS = albums.$(OBJEXT)
+am_albums_OBJECTS = albums.$(OBJEXT) util.$(OBJEXT)
 albums_OBJECTS = $(am_albums_OBJECTS)
 albums_LDADD = $(LDADD)
 albums_DEPENDENCIES = ../src/libmtp.la
 am_connect_OBJECTS = connect.$(OBJEXT) delfile.$(OBJEXT) \
 	getfile.$(OBJEXT) newfolder.$(OBJEXT) sendfile.$(OBJEXT) \
-	sendtr.$(OBJEXT) pathutils.$(OBJEXT)
+	sendtr.$(OBJEXT) pathutils.$(OBJEXT) util.$(OBJEXT)
 connect_OBJECTS = $(am_connect_OBJECTS)
 connect_LDADD = $(LDADD)
 connect_DEPENDENCIES = ../src/libmtp.la
-am_detect_OBJECTS = detect.$(OBJEXT)
+am_detect_OBJECTS = detect.$(OBJEXT) util.$(OBJEXT)
 detect_OBJECTS = $(am_detect_OBJECTS)
 detect_LDADD = $(LDADD)
 detect_DEPENDENCIES = ../src/libmtp.la
-am_emptyfolders_OBJECTS = emptyfolders.$(OBJEXT)
+am_emptyfolders_OBJECTS = emptyfolders.$(OBJEXT) util.$(OBJEXT)
 emptyfolders_OBJECTS = $(am_emptyfolders_OBJECTS)
 emptyfolders_LDADD = $(LDADD)
 emptyfolders_DEPENDENCIES = ../src/libmtp.la
-am_files_OBJECTS = files.$(OBJEXT)
+am_files_OBJECTS = files.$(OBJEXT) util.$(OBJEXT)
 files_OBJECTS = $(am_files_OBJECTS)
 files_LDADD = $(LDADD)
 files_DEPENDENCIES = ../src/libmtp.la
-am_folders_OBJECTS = folders.$(OBJEXT)
+am_folders_OBJECTS = folders.$(OBJEXT) util.$(OBJEXT)
 folders_OBJECTS = $(am_folders_OBJECTS)
 folders_LDADD = $(LDADD)
 folders_DEPENDENCIES = ../src/libmtp.la
-am_format_OBJECTS = format.$(OBJEXT)
+am_format_OBJECTS = format.$(OBJEXT) util.$(OBJEXT)
 format_OBJECTS = $(am_format_OBJECTS)
 format_LDADD = $(LDADD)
 format_DEPENDENCIES = ../src/libmtp.la
-am_getplaylist_OBJECTS = getplaylist.$(OBJEXT)
+am_getplaylist_OBJECTS = getplaylist.$(OBJEXT) util.$(OBJEXT)
 getplaylist_OBJECTS = $(am_getplaylist_OBJECTS)
 getplaylist_LDADD = $(LDADD)
 getplaylist_DEPENDENCIES = ../src/libmtp.la
-am_hotplug_OBJECTS = hotplug.$(OBJEXT)
+am_hotplug_OBJECTS = hotplug.$(OBJEXT) util.$(OBJEXT)
 hotplug_OBJECTS = $(am_hotplug_OBJECTS)
 hotplug_LDADD = $(LDADD)
 hotplug_DEPENDENCIES = ../src/libmtp.la
-am_newplaylist_OBJECTS = newplaylist.$(OBJEXT)
+am_newplaylist_OBJECTS = newplaylist.$(OBJEXT) util.$(OBJEXT)
 newplaylist_OBJECTS = $(am_newplaylist_OBJECTS)
 newplaylist_LDADD = $(LDADD)
 newplaylist_DEPENDENCIES = ../src/libmtp.la
-am_playlists_OBJECTS = playlists.$(OBJEXT)
+am_playlists_OBJECTS = playlists.$(OBJEXT) util.$(OBJEXT)
 playlists_OBJECTS = $(am_playlists_OBJECTS)
 playlists_LDADD = $(LDADD)
 playlists_DEPENDENCIES = ../src/libmtp.la
-am_reset_OBJECTS = reset.$(OBJEXT)
+am_reset_OBJECTS = reset.$(OBJEXT) util.$(OBJEXT)
 reset_OBJECTS = $(am_reset_OBJECTS)
 reset_LDADD = $(LDADD)
 reset_DEPENDENCIES = ../src/libmtp.la
-am_thumb_OBJECTS = thumb.$(OBJEXT)
+am_thumb_OBJECTS = thumb.$(OBJEXT) util.$(OBJEXT)
 thumb_OBJECTS = $(am_thumb_OBJECTS)
 thumb_LDADD = $(LDADD)
 thumb_DEPENDENCIES = ../src/libmtp.la
-am_tracks_OBJECTS = tracks.$(OBJEXT)
+am_tracks_OBJECTS = tracks.$(OBJEXT) util.$(OBJEXT)
 tracks_OBJECTS = $(am_tracks_OBJECTS)
 tracks_LDADD = $(LDADD)
 tracks_DEPENDENCIES = ../src/libmtp.la
-am_trexist_OBJECTS = trexist.$(OBJEXT)
+am_trexist_OBJECTS = trexist.$(OBJEXT) util.$(OBJEXT)
 trexist_OBJECTS = $(am_trexist_OBJECTS)
 trexist_LDADD = $(LDADD)
 trexist_DEPENDENCIES = ../src/libmtp.la
@@ -257,23 +257,24 @@ target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 connect_SOURCES = connect.c delfile.c getfile.c newfolder.c \
-	sendfile.c sendtr.c pathutils.c pathutils.h common.h
+	sendfile.c sendtr.c pathutils.c pathutils.h \
+	util.c util.h common.h
 
-detect_SOURCES = detect.c common.h
-tracks_SOURCES = tracks.c common.h
-files_SOURCES = files.c common.h
-hotplug_SOURCES = hotplug.c common.h
-folders_SOURCES = folders.c common.h
-trexist_SOURCES = trexist.c common.h
-playlists_SOURCES = playlists.c common.h
-getplaylist_SOURCES = getplaylist.c common.h
-newplaylist_SOURCES = newplaylist.c common.h
-format_SOURCES = format.c common.h
-albumart_SOURCES = albumart.c common.h
-albums_SOURCES = albums.c common.h
-emptyfolders_SOURCES = emptyfolders.c common.h
-thumb_SOURCES = thumb.c common.h
-reset_SOURCES = reset.c common.h
+detect_SOURCES = detect.c util.c util.h common.h
+tracks_SOURCES = tracks.c util.c util.h common.h
+files_SOURCES = files.c util.c util.h common.h
+hotplug_SOURCES = hotplug.c util.c util.h common.h
+folders_SOURCES = folders.c util.c util.h common.h
+trexist_SOURCES = trexist.c util.c util.h common.h
+playlists_SOURCES = playlists.c util.c util.h common.h
+getplaylist_SOURCES = getplaylist.c util.c util.h common.h
+newplaylist_SOURCES = newplaylist.c util.c util.h common.h
+format_SOURCES = format.c util.c util.h common.h
+albumart_SOURCES = albumart.c util.c util.h common.h
+albums_SOURCES = albums.c util.c util.h common.h
+emptyfolders_SOURCES = emptyfolders.c util.c util.h common.h
+thumb_SOURCES = thumb.c util.c util.h common.h
+reset_SOURCES = reset.c util.c util.h common.h
 AM_CPPFLAGS = -I$(top_builddir)/src
 LDADD = ../src/libmtp.la
 EXTRA_DIST = evolution-sync.sh
@@ -415,6 +416,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/thumb.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tracks.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/trexist.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/util.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

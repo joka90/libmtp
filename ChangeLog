@@ -1,3 +1,57 @@
+2008-08-25  Linus Walleij <triad@df.lth.se>
+
+	* src/Makefile.am: bump interface a patchlevel. (Fully
+	  compatible.)
+	* configure.ac: bump version to 0.3.1.
+	* Release as libmtp 0.3.1.
+
+2008-08-18  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.c: some vartype and return flunkies.
+	* configure.ac: check for locale.h
+	* examples/util.c: set locale to pick up environment.
+
+2008-08-17  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.c: some handling of ptp_usb_getdata()
+	  when passed in data size was 0xffffffffU, data
+	  sent in first transaction was ignored, fix by
+	  Rob Woolley.
+	* src/ptp-pack.c: sync in from upstream libgphoto2.
+	* src/README: move relevant stuff to README.
+	* README: see above.
+
+2008-08-15  Alistair Boyle <alistair.js.boyle@gmail.com>
+
+	* src/playlist-spl.c: added handling of Samsung's
+	  proprietary .spl playlist format.
+	* src/playlist-spl.h: dito.
+	* src/device-flags.h: new flags for Samsung playlists.
+	* src/music-players.h: assign flags.
+	* src/libusb-glue.h: convenience macros.
+	* src/libmtp.c: integrate Samsung playlists.
+
+2008-08-15  Linus Walleij <triad@df.lth.se>
+
+	* examples/Makefile.am: break out utility functions
+	  (currently only checklang()) to a separate file.
+	* examples/util.h: dito.
+	* examples/util.c: dito.
+	* examples/detect.c: dito.
+	* examples/sendtr.c: dito.
+	* examples/connect.c: dito.
+
+2008-08-14  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: add some documentation to file and track
+	  listing functions to that it's clear that you have to
+	  inspect storage_id and parent_id in order to group files
+	  into storages and/or folders.
+
+2008-07-31  Linus Walleij <triad@df.lth.se>
+
+	* src/music-players.h: several new devices and flags.
+
 2008-06-24  Linus Walleij <triad@df.lth.se>
 
 	* TODO: updates.

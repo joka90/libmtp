@@ -42,12 +42,14 @@
 #include "ptp.h"
 #include "libusb-glue.h"
 #include "device-flags.h"
+#include "playlist-spl.h"
 
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <time.h>
+#include <errno.h>
 #ifdef _MSC_VER // For MSVC++
 #define USE_WINDOWS_IO_H
 #include <io.h>
@@ -2551,7 +2553,7 @@ int LIBMTP_Get_Supported_Filetypes(LIBMTP_mtpdevice_t *device, uint16_t ** const
  * do not put a reference to any <code>char *</code> field. instead
  * <code>strncpy()</code> it!
  *
- * @param device a pointer to the device to get the filetype capabilities for.
+ * @param device a pointer to the device to get the storage for.
  * @param sortby an integer that determines the sorting of the storage list. 
  *        Valid sort methods are defined in libmtp.h with beginning with
  *        LIBMTP_STORAGE_SORTBY_. 0 or LIBMTP_STORAGE_SORTBY_NOTSORTED to not 
@@ -2709,7 +2711,8 @@ LIBMTP_file_t *LIBMTP_Get_Filelisting(LIBMTP_mtpdevice_t *device)
 
 /**
  * This returns a long list of all files available
- * on the current MTP device. Folders will not be returned. Typical usage:
+ * on the current MTP device. Folders will not be returned, but abstract
+ * entities like playlists and albums will show up as "files". Typical usage:
  *
  * <pre>
  * LIBMTP_file_t *filelist;
@@ -2725,19 +2728,26 @@ LIBMTP_file_t *LIBMTP_Get_Filelisting(LIBMTP_mtpdevice_t *device)
  * }
  * </pre>
  *
+ * If you want to group your file listing by storage (per storage unit) or
+ * arrange files into folders, you must dereference the <code>storage_id</code>
+ * and/or <code>parent_id</code> field of the returned <code>LIBMTP_file_t</code>
+ * struct. To arrange by folders or files you typically have to create the proper
+ * trees by calls to <code>LIBMTP_Get_Storage()</code> and/or 
+ * <code>LIBMTP_Get_Folder_List()</code> first.
+ *
  * @param device a pointer to the device to get the file listing for.
  * @param callback a function to be called during the tracklisting retrieveal
- *               for displaying progress bars etc, or NULL if you don't want
- *               any callbacks.
+ *        for displaying progress bars etc, or NULL if you don't want
+ *        any callbacks.
  * @param data a user-defined pointer that is passed along to
- *             the <code>progress</code> function in order to
- *             pass along some user defined data to the progress
- *             updates. If not used, set this to NULL.
+ *        the <code>progress</code> function in order to
+ *        pass along some user defined data to the progress
+ *        updates. If not used, set this to NULL.
  * @return a list of files that can be followed using the <code>next</code>
- *         field of the <code>LIBMTP_file_t</code> data structure.
- *         Each of the metadata tags must be freed after use, and may
- *         contain only partial metadata information, i.e. one or several
- *         fields may be NULL or 0.
+ *        field of the <code>LIBMTP_file_t</code> data structure.
+ *        Each of the metadata tags must be freed after use, and may
+ *        contain only partial metadata information, i.e. one or several
+ *        fields may be NULL or 0.
  * @see LIBMTP_Get_Filemetadata()
  */
 LIBMTP_file_t *LIBMTP_Get_Filelisting_With_Callback(LIBMTP_mtpdevice_t *device,
@@ -3358,8 +3368,9 @@ LIBMTP_track_t *LIBMTP_Get_Tracklisting(LIBMTP_mtpdevice_t *device)
 }
 
 /**
- * This returns a long list of all tracks available
- * on the current MTP device. Typical usage:
+ * This returns a long list of all tracks available on the current MTP device.
+ * Tracks include multimedia objects, both music tracks and video tracks.
+ * Typical usage:
  *
  * <pre>
  * LIBMTP_track_t *tracklist;
@@ -3375,19 +3386,26 @@ LIBMTP_track_t *LIBMTP_Get_Tracklisting(LIBMTP_mtpdevice_t *device)
  * }
  * </pre>
  *
+ * If you want to group your track listing by storage (per storage unit) or
+ * arrange tracks into folders, you must dereference the <code>storage_id</code>
+ * and/or <code>parent_id</code> field of the returned <code>LIBMTP_track_t</code>
+ * struct. To arrange by folders or files you typically have to create the proper
+ * trees by calls to <code>LIBMTP_Get_Storage()</code> and/or 
+ * <code>LIBMTP_Get_Folder_List()</code> first.
+ *
  * @param device a pointer to the device to get the track listing for.
  * @param callback a function to be called during the tracklisting retrieveal
- *               for displaying progress bars etc, or NULL if you don't want
- *               any callbacks.
+ *        for displaying progress bars etc, or NULL if you don't want
+ *        any callbacks.
  * @param data a user-defined pointer that is passed along to
- *             the <code>progress</code> function in order to
- *             pass along some user defined data to the progress
- *             updates. If not used, set this to NULL.
+ *        the <code>progress</code> function in order to
+ *        pass along some user defined data to the progress
+ *        updates. If not used, set this to NULL.
  * @return a list of tracks that can be followed using the <code>next</code>
- *         field of the <code>LIBMTP_track_t</code> data structure.
- *         Each of the metadata tags must be freed after use, and may
- *         contain only partial metadata information, i.e. one or several
- *         fields may be NULL or 0.
+ *        field of the <code>LIBMTP_track_t</code> data structure.
+ *        Each of the metadata tags must be freed after use, and may
+ *        contain only partial metadata information, i.e. one or several
+ *        fields may be NULL or 0.
  * @see LIBMTP_Get_Trackmetadata()
  */
 LIBMTP_track_t *LIBMTP_Get_Tracklisting_With_Callback(LIBMTP_mtpdevice_t *device,
@@ -5192,6 +5210,8 @@ void LIBMTP_destroy_playlist_t(LIBMTP_playlist_t *playlist)
  */
 LIBMTP_playlist_t *LIBMTP_Get_Playlist_List(LIBMTP_mtpdevice_t *device)
 {
+  PTP_USB *ptp_usb = (PTP_USB*) device->usbinfo;
+  const int REQ_SPL = FLAG_PLAYLIST_SPL(ptp_usb);
   PTPParams *params = (PTPParams *) device->params;
   LIBMTP_playlist_t *retlists = NULL;
   LIBMTP_playlist_t *curlist = NULL;
@@ -5210,25 +5230,34 @@ LIBMTP_playlist_t *LIBMTP_Get_Playlist_List(LIBMTP_mtpdevice_t *device)
     oi = &params->objectinfo[i];
 
     // Ignore stuff that isn't playlists
-    if ( oi->ObjectFormat != PTP_OFC_MTP_AbstractAudioVideoPlaylist ) {
+
+    // For Samsung players we must look for the .spl extension explicitly since
+    // playlists are not stored as playlist objects.
+    if ( REQ_SPL && is_spl_playlist(oi) ) {
+      // Allocate a new playlist type
+      pl = LIBMTP_new_playlist_t();
+      spl_to_playlist_t(device, oi, params->handles.Handler[i], pl);
+    }
+    else if ( oi->ObjectFormat != PTP_OFC_MTP_AbstractAudioVideoPlaylist ) {
       continue;
     }
+    else {
+      // Allocate a new playlist type
+      pl = LIBMTP_new_playlist_t();
 
-    // Allocate a new playlist type
-    pl = LIBMTP_new_playlist_t();
+      // Ignoring the oi->Filename field.
+      pl->name = get_string_from_object(device, params->handles.Handler[i], PTP_OPC_Name);
+      pl->playlist_id = params->handles.Handler[i];
+      pl->parent_id = oi->ParentObject;
+      pl->storage_id = oi->StorageID;
 
-    // Ignoring the oi->Filename field.
-    pl->name = get_string_from_object(device, params->handles.Handler[i], PTP_OPC_Name);
-    pl->playlist_id = params->handles.Handler[i];
-    pl->parent_id = oi->ParentObject;
-    pl->storage_id = oi->StorageID;
-
-    // Then get the track listing for this playlist
-    ret = ptp_mtp_getobjectreferences(params, pl->playlist_id, &pl->tracks, &pl->no_tracks);
-    if (ret != PTP_RC_OK) {
-      add_ptp_error_to_errorstack(device, ret, "LIBMTP_Get_Playlist: Could not get object references.");
-      pl->tracks = NULL;
-      pl->no_tracks = 0;
+      // Then get the track listing for this playlist
+      ret = ptp_mtp_getobjectreferences(params, pl->playlist_id, &pl->tracks, &pl->no_tracks);
+      if (ret != PTP_RC_OK) {
+        add_ptp_error_to_errorstack(device, ret, "LIBMTP_Get_Playlist: Could not get object references.");
+        pl->tracks = NULL;
+        pl->no_tracks = 0;
+      }
     }
     
     // Add playlist to a list that will be returned afterwards.
@@ -5255,6 +5284,8 @@ LIBMTP_playlist_t *LIBMTP_Get_Playlist_List(LIBMTP_mtpdevice_t *device)
  */
 LIBMTP_playlist_t *LIBMTP_Get_Playlist(LIBMTP_mtpdevice_t *device, uint32_t const plid)
 {
+  PTP_USB *ptp_usb = (PTP_USB*) device->usbinfo;
+  const int REQ_SPL = FLAG_PLAYLIST_SPL(ptp_usb);
   PTPParams *params = (PTPParams *) device->params;
   uint32_t i;
 
@@ -5274,8 +5305,17 @@ LIBMTP_playlist_t *LIBMTP_Get_Playlist(LIBMTP_mtpdevice_t *device, uint32_t cons
     
     oi = &params->objectinfo[i];
 
+    // For Samsung players we must look for the .spl extension explicitly since
+    // playlists are not stored as playlist objects.
+    if ( REQ_SPL && is_spl_playlist(oi) ) {
+      // Allocate a new playlist type
+      pl = LIBMTP_new_playlist_t();
+      spl_to_playlist_t(device, oi, params->handles.Handler[i], pl);
+      return pl;
+    }
+
     // Ignore stuff that isn't playlists
-    if ( oi->ObjectFormat != PTP_OFC_MTP_AbstractAudioVideoPlaylist ) {
+    else if ( oi->ObjectFormat != PTP_OFC_MTP_AbstractAudioVideoPlaylist ) {
       return NULL;
     }
 
@@ -5847,6 +5887,11 @@ int LIBMTP_Create_New_Playlist(LIBMTP_mtpdevice_t *device,
   }
   metadata->parent_id = localph;
 
+  // Samsung needs its own special type of playlists
+  if(FLAG_PLAYLIST_SPL(ptp_usb)) {
+    return playlist_t_to_spl(device, metadata);
+  }
+
   // Just create a new abstract audio/video playlist...
   return create_new_abstract_list(device,
 				  metadata->name,
@@ -5879,6 +5924,13 @@ int LIBMTP_Create_New_Playlist(LIBMTP_mtpdevice_t *device,
 int LIBMTP_Update_Playlist(LIBMTP_mtpdevice_t *device,
 			   LIBMTP_playlist_t const * const metadata)
 {
+
+  // Samsung needs its own special type of playlists
+  PTP_USB *ptp_usb = (PTP_USB*) device->usbinfo;
+  if(FLAG_PLAYLIST_SPL(ptp_usb)) {
+    return update_spl_playlist(device, metadata);
+  }
+
   return update_abstract_list(device,
 			      metadata->name,
 			      NULL,
