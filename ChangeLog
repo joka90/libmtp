@@ -1,3 +1,200 @@
+2007-08-04  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: fix up the 64bit filesize and tracksize support.
+	  There were some bugs...
+	* src/Makefile.am: tweak interface revision so that we produce
+	  libmtp.so.6 now.
+	* configure.ac: bump library revision to 0.2.0.
+	* examples/hotplug.c: switch to use ATTR{} instead of SYSFS{}
+
+2007-08-04  Richard Low <richard@wentnet.com>
+
+	* src/libusb-glue.c: add Sansa m240 (a different ID to before)
+	  Give the Toshiba Gigabeat S
+	  DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL.
+
+2007-08-03  Marcus Meissner <meissner@suse.de>
+
+	* m4/byteorder.m4: byteorder fixes.
+
+2007-07-30  Richard Low <richard@wentnet.com>
+
+	* src/ptp-pack.c: fix up array packing
+
+2007-07-30  Linus Walleij <triad@df.lth.se>
+
+	* src/ptp-pack.c: try to get a uniform 64 bit
+	  support, use some old macro code.
+
+2007-07-29  Richard Low <richard@wentnet.com>
+
+	* src/libmtp.c: 64 bit filesize support for tracks
+	* src/ptp-pack.c: ditto
+	* src/ptp.h: ditto
+
+2007-07-27  Richard Low <richard@wentnet.com>
+
+	* src/libmtp.c: Some better NULL checks
+
+2007-07-27  Linus Walleij <triad@df.lth.se>
+
+	* examples/hotplug.c: changed subsystem from "usb_device"
+	  to "usb". Presumably a change in the kernel some time ago.
+
+2007-07-21  Richard Low <richard@wentnet.com>
+
+	* src/libmtp.c: Correctly bail out of LIBMTP_Get_Storage
+
+2007-07-17  Linus Walleij <triad@df.lth.se>
+
+	* examples/reset.c: Add a device reset program.
+	* src/libmtp.c: Add reset command.
+	* src/ptp.c: dito, and sync in upstream changes.
+	* src/ptp.h: dito, and sync in upstream changes.
+	* src/ptp-pack.c: sync in upstream changes.
+
+2007-07-17  Richard Low <richard@wentnet.com>
+
+	* src/libmtp.c: Added some more (paranoid) NULL checks
+
+2007-07-14  Richard Low <richard@wentnet.com>
+
+	* src/libmtp.c: Add a NULL check
+
+2007-07-13  Richard Low <richard@wentnet.com>
+
+	* src/libusb-glue.c: add Disney MixMax
+
+2007-07-11  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: put in Tero's name in the preamble.
+	* src/libusb-glue.c: make the dump function sump out the zuper zecret
+	  devize dezcriptorz in clear text hex.
+
+2007-07-10  Linus Walleij <triad@df.lth.se>
+
+	* examples/hotplug.c: force HAL OGG support on iriver devices. 
+	  They all have it! Also force for two other devices that does 
+	  this.
+
+2007-07-07  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.h: new flag for the case when getting the object
+	  property list of all metadata for all objects is broken.
+	* src/libusb-glue.c: tentatively tag a Philips device with this flag.
+	* src/libmtp.c: fixed usage of returned pointers from realloc(),
+	  introduce new flag.
+
+2007-07-05  Tero Saarni <tero.saarni@gmail.com>
+
+	* src/libmtp.c: update cache when manipulating objects instead of
+	  always flushing the whole cache.
+
+2007-07-03  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: use the params->proplist metadata cache. Help
+	  rid all flush_handles() you can in order to add even more to
+	  the efficiency of the cache.
+
+2007-07-01  Linus Walleij <triad@df.lth.se>
+
+	* src/ptp.c: sync to upstream gPhoto source.
+	* src/ptp.h: dito.
+	* src/ptp-pack.c: dito.
+	* src/libmtp.c: use the params->objectinfo object info cache to
+	  speed things up considerably. This is exactly what libgphoto2
+	  does so now we move closer to upstream. I believe this also
+	  fixes quite a few memory leaks because we weren't freeing the
+	  strings inside the objectinfo previously.
+
+2007-05-29  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: use the set object prop list command to set album
+	  props if available. Follow metadata set design pattern used for
+	  tracks; check first if the object type can set name/artist/genre.
+
+2007-05-24  Jeff Mitchell <me@jefferai.com>
+
+	* hotplug.sh.in: Properly install the HAL FDI rules if
+	  the user so chooses to when prompted.
+
+2007-05-24  Jeff Mitchell <me@jefferai.com>
+
+	* examples/hotplug.c: Fix/update HAL output to conform
+	  to new specs. Fix whitespacing to be consistent.
+
+2007-05-17  Richard Low <richard@wentnet.com>
+
+	* src/libusb-glue.c: added Samsung YH-920
+
+2007-05-11  Linus Walleij <triad@df.lth.se>
+
+	* examples/hotplug.c: output a usb.ids map if need be.
+	* sync-usbids.sh: script to assist in comparing our device
+	  database to the linux-usb database so we can submit new
+	  entries to it more easily. Please extend this until it
+	  creates automated diff:s if you can!
+
+2007-05-10  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.c: some new devices, some rewording etc.
+
+2007-05-05  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.h: removed the DUALMODE flag, it's pointless and
+	  equal to the problem solved by the UNLOAD_DRIVER flag.
+	* src/libusb-glue.c: dito, move the only DUALMODE flag into an
+	  UNLOAD_DRIVER flag. Added Archos Gmini.
+
+2007-05-05  Richard Low <richard@wentnet.com>
+
+	* src/libusb-glue.c: added Philips PSA610
+	* src/libmtp.c: code to recursively get object handles for each
+	  assoc.
+	* src/ptp.h: ditto
+
+2007-04-28  Richard Low <richard@wentnet.com>
+
+	* src/libusb-glue.c: new device
+
+2007-04-26  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.c: memory leak: dangling, unused pointer killed.
+
+2007-04-23  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.h.in: extend LIBMTP_album_t to include fields for
+	  artist and genre. This is sort of required so we must change
+	  the API to have it working properly.
+	* src/libmtp.c: dito. Reflect changes in implementation.
+
+2007-04-18  Linus Walleij <triad@df.lth.se>
+
+	* src/ptp.c: sync to upstream gPhoto source.
+	* src/ptp.h: dito.
+	
+2007-04-17  Richard Low <richard@wentnet.com>
+
+	* src/libusb-glue.c: new device
+
+2007-04-13  Richard Low <richard@wentnet.com>
+
+	* src/libusb-glue.c: new devices
+
+2007-04-12  Linus Walleij <triad@df.lth.se>
+
+	* examples/hotplug.c: fix GOTO style in udev map.
+
+2007-04-02  Linus Walleij <triad@df.lth.se>
+
+	* examples/files.c: some WIN32 64bit prefix fixup.
+	* examples/tracks.c: dito.
+	
+2007-03-28  Ted Bullock <tbullock@canada.com>
+
+	* examples/*.c: Print library version number on execution of examples.
+	* src/libmtp.h.in: New version number string to aid version echoing.
+
 2007-03-26  Linus Walleij <triad@df.lth.se>
 
 	* configure.ac: bump version to 0.1.5, release 0.1.5!

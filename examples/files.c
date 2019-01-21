@@ -32,7 +32,11 @@ static void dump_fileinfo(LIBMTP_file_t *file)
   if (file->filesize == (uint32_t) -1) {
     printf("   None. (abstract file, size = -1)\n");
   } else {
+#ifdef __WIN32__
+    printf("   File size %llu (0x%08I64X) bytes\n", file->filesize, file->filesize);
+#else
     printf("   File size %llu (0x%08llX) bytes\n", file->filesize, file->filesize);
+#endif
   }
   printf("   Parent ID: %u\n", file->parent_id);
   printf("   Filetype: %s\n", LIBMTP_Get_Filetype_Description(file->filetype));
@@ -42,6 +46,8 @@ int main (int argc, char **argv)
 {
   LIBMTP_mtpdevice_t *device_list, *iter;
   LIBMTP_file_t *files;
+
+  fprintf(stdout, "libmtp version: " LIBMTP_VERSION_STRING "\n\n");
 
   LIBMTP_Init();
 

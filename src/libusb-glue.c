@@ -101,30 +101,41 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
    * Samsung
    * We suspect that more of these are dual mode.
    */
+  // From Soren O'Neill
+  { "Samsung YH-920", 0x04e8, 0x5022, DEVICE_FLAG_UNLOAD_DRIVER },
+  // Contributed by aronvanammers on SourceForge
+  { "Samsung YH-925GS", 0x04e8, 0x5024, DEVICE_FLAG_NONE },
   // From libgphoto2
   { "Samsung YH-820", 0x04e8, 0x502e, DEVICE_FLAG_NONE },
   // Contributed by polux2001@users.sourceforge.net
   { "Samsung YH-925(-GS)", 0x04e8, 0x502f, DEVICE_FLAG_NONE },
-  // Contributed by aronvanammers on SourceForge
-  { "Samsung YH-925GS", 0x04e8, 0x5024, DEVICE_FLAG_NONE },
+  // Contributed by anonymous person on SourceForge
+  { "Samsung YH-J70J", 0x04e8, 0x5033, DEVICE_FLAG_UNLOAD_DRIVER },
+  // From XNJB user
+  { "Samsung YP-Z5", 0x04e8, 0x503c, DEVICE_FLAG_NONE },
+  // From XNJB user
+  { "Samsung YP-Z5 2GB", 0x04e8, 0x5041, DEVICE_FLAG_NONE },
   // Contributed by anonymous person on SourceForge
   { "Samsung YP-T7J", 0x04e8, 0x5047, DEVICE_FLAG_NONE },
   // Reported by cstrickler@gmail.com
-  { "Samsung YP-U2J (YP-U2JXB/XAA)", 0x04e8, 0x5054, DEVICE_FLAG_NONE },
+  { "Samsung YP-U2J (YP-U2JXB/XAA)", 0x04e8, 0x5054, DEVICE_FLAG_UNLOAD_DRIVER },
   // Reported by Andrew Benson
-  { "Samsung YP-F2J", 0x04e8, 0x5057, DEVICE_FLAG_DUALMODE },
+  { "Samsung YP-F2J", 0x04e8, 0x5057, DEVICE_FLAG_UNLOAD_DRIVER },
   // Reported by Patrick <skibler@gmail.com>
   { "Samsung YP-K5", 0x04e8, 0x505a, DEVICE_FLAG_NO_ZERO_READS },
+  // From m.eik michalke
+  { "Samsung YP-U3", 0x04e8, 0x507d, DEVICE_FLAG_NONE },
   // Reported by Matthew Wilcox <matthew@wil.cx>
   { "Samsung YP-T9", 0x04e8, 0x507f, DEVICE_FLAG_NONE },
   // From Paul Clinch
   { "Samsung YP-K3", 0x04e8, 0x5081, DEVICE_FLAG_NONE },
-  // From a rouge .INF file
-  { "Samsung YH-999 Portable Media Center", 0x04e8, 0x5a0f, DEVICE_FLAG_NONE },
+  // From a rouge .INF file,
+  // this device ID seems to have been recycled for the Samsung SGH-A707 Cingular cellphone
+  { "Samsung YH-999 Portable Media Center / Samsung SGH-A707", 0x04e8, 0x5a0f, DEVICE_FLAG_NONE },
   // From Lionel Bouton
   { "Samsung X830 Mobile Phone", 0x04e8, 0x6702, DEVICE_FLAG_NONE },
-  // From XNJB user
-  { "Samsung YP-Z5", 0x04e8, 0x503c, DEVICE_FLAG_NONE },
+  // From James <jamestech@gmail.com>
+  { "Samsung U600 Mobile Phone", 0x04e8, 0x6709, DEVICE_FLAG_UNLOAD_DRIVER },
 
   /*
    * Intel
@@ -140,19 +151,22 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
   /*
    * Philips
    */
-  // From libgphoto2 source
-  { "Philips HDD6320", 0x0471, 0x01eb, DEVICE_FLAG_NONE },
-  { "Philips HDD6320/00 & HDD6330/17", 0x0471, 0x014b, DEVICE_FLAG_NONE },
+  { "Philips HDD6320/00 and HDD6330/17", 0x0471, 0x014b, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
   // Anonymous SourceForge user
   { "Philips HDD1630/17", 0x0471, 0x014c, DEVICE_FLAG_NONE },
-  // From Gerhard Mekenkamp
-  { "Philips GoGear Audio", 0x0471, 0x0165, DEVICE_FLAG_NONE },
+  // from discussion forum
+  { "Philips HDD085/00 and HDD082/17", 0x0471, 0x014d, DEVICE_FLAG_NONE },
   // from XNJB forum
   { "Philips GoGear SA9200", 0x0471, 0x014f, DEVICE_FLAG_NONE },
+  // From Gerhard Mekenkamp
+  { "Philips GoGear Audio", 0x0471, 0x0165, DEVICE_FLAG_NONE },
+  // from npedrosa
+  { "Philips PSA610", 0x0471, 0x0181, DEVICE_FLAG_NONE },
+  // From libgphoto2 source
+  { "Philips HDD6320", 0x0471, 0x01eb, DEVICE_FLAG_NONE },
   // from XNJB user
   { "Philips PSA235", 0x0471, 0x7e01, DEVICE_FLAG_NONE },
-  // from discussion forum
-  { "Philips HDD085/00", 0x0471, 0x014d, DEVICE_FLAG_NONE },
+
 
   /*
    * SanDisk
@@ -164,13 +178,23 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
   // Reported by tangent_@users.sourceforge.net
   { "SanDisk Sansa c150", 0x0781, 0x7410, DEVICE_FLAG_UNLOAD_DRIVER },
   // From libgphoto2 source
-  { "SanDisk Sansa e200", 0x0781, 0x7420, DEVICE_FLAG_UNLOAD_DRIVER },
-  // Reported by gonkflea@users.sourceforge.net
-  { "SanDisk Sansa e260", 0x0781, 0x7420, DEVICE_FLAG_UNLOAD_DRIVER },
-  // Reported by anonymous user at sourceforge.net
-  { "SanDisk Sansa c250", 0x0781, 0x7450, DEVICE_FLAG_UNLOAD_DRIVER },
+  // Reported by <gonkflea@users.sourceforge.net>
+  // Reported by Mike Owen <mikeowen@computerbaseusa.com>
+  { "SanDisk Sansa e200/e250/e260/e270/e280", 0x0781, 0x7420, DEVICE_FLAG_UNLOAD_DRIVER },
   // Reported by XNJB user
   { "SanDisk Sansa e280", 0x0781, 0x7421, DEVICE_FLAG_UNLOAD_DRIVER },
+  // Reported by anonymous user at sourceforge.net
+  { "SanDisk Sansa c250", 0x0781, 0x7450, DEVICE_FLAG_UNLOAD_DRIVER },
+  // Reported by XNJB user, and Miguel de Icaza <miguel@gnome.org>
+  // This has no dual-mode so no need to unload any driver.
+  // This is a Linux based device!
+  { "SanDisk Sansa Connect", 0x0781, 0x7480, DEVICE_FLAG_NONE },
+  // Reported by Troy Curtis Jr.
+  { "SanDisk Sansa Express", 0x0781, 0x7460, DEVICE_FLAG_UNLOAD_DRIVER |
+                                             DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  // Reported by XNJB user
+  { "SanDisk Sansa m240", 0x0781, 0x7430, DEVICE_FLAG_UNLOAD_DRIVER },
+  
 
   /*
    * iRiver
@@ -184,6 +208,10 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
     DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS | 
     DEVICE_FLAG_IRIVER_OGG_ALZHEIMER },
   { "iRiver Portable Media Center", 0x1006, 0x4003, 
+    DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS | 
+    DEVICE_FLAG_IRIVER_OGG_ALZHEIMER },
+  // From an anonymous person at SourceForge
+  { "iRiver iFP-880", 0x4102, 0x1008, 
     DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS | 
     DEVICE_FLAG_IRIVER_OGG_ALZHEIMER },
   // From libgphoto2 source
@@ -217,9 +245,21 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
   { "iRiver N12", 0x4102, 0x1122, 
     DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS | 
     DEVICE_FLAG_IRIVER_OGG_ALZHEIMER },
+  // Reported by Philip Antoniades <philip@mysql.com>
+  // Newer iriver devices seem to have shaped-up firmware without any
+  // of the annoying bugs.
+  { "iRiver Clix2", 0x4102, 0x1126, DEVICE_FLAG_NONE },
   // Reported by Adam Torgerson
   { "iRiver Clix", 0x4102, 0x112a, 
     DEVICE_FLAG_NO_ZERO_READS | DEVICE_FLAG_IRIVER_OGG_ALZHEIMER },
+  // Reported by Douglas Roth <dougaus@gmail.com>
+  { "iRiver X20", 0x4102, 0x1132, 
+    DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS | 
+    DEVICE_FLAG_IRIVER_OGG_ALZHEIMER },
+  // Reported by Robert Ugo <robert_ugo@users.sourceforge.net>
+  { "iRiver T60", 0x4102, 0x1134, 
+    DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS | 
+    DEVICE_FLAG_IRIVER_OGG_ALZHEIMER },
   // Reported by Scott Call
   { "iRiver H10 20GB", 0x4102, 0x2101, 
     DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS | 
@@ -227,6 +267,7 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
   { "iRiver H10", 0x4102, 0x2102, 
     DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS | 
     DEVICE_FLAG_IRIVER_OGG_ALZHEIMER },
+
 
   /*
    * Dell
@@ -241,9 +282,11 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
   // Reported by Nicholas Tripp
   { "Toshiba Gigabeat P20", 0x0930, 0x000f, DEVICE_FLAG_NONE },
   // From libgphoto2
-  { "Toshiba Gigabeat S", 0x0930, 0x0010, DEVICE_FLAG_NONE },
+  { "Toshiba Gigabeat S", 0x0930, 0x0010, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
   // Reported by Rob Brown
   { "Toshiba Gigabeat P10", 0x0930, 0x0011, DEVICE_FLAG_NONE },
+  // Reported by Michael Davis <slithy@yahoo.com>
+  { "Toshiba Gigabeat U", 0x0930, 0x0016, DEVICE_FLAG_NONE },
   
   /*
    * Archos
@@ -252,6 +295,11 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
   { "Archos 104 (MTP mode)", 0x0e79, 0x120a, DEVICE_FLAG_NONE },
   // Added by Jan Binder
   { "Archos XS202 (MTP mode)", 0x0e79, 0x1208, DEVICE_FLAG_NONE },
+  // Reported by Etienne Chauchot <chauchot.etienne@free.fr>
+  // This seems to be dual-mode and thus need to have the unload flag.
+  { "Archos 504 (MTP mode)", 0x0e79, 0x1307, DEVICE_FLAG_UNLOAD_DRIVER },
+  // Reported by Alexander Haertig <AlexanderHaertig@gmx.de>
+  { "Archos Gmini XS100", 0x0e79, 0x1207, DEVICE_FLAG_UNLOAD_DRIVER },
 
   /*
    * Dunlop (OEM of EGOMAN ltd?) reported by Nanomad
@@ -284,13 +332,58 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
   /*
    * Nokia
    */
-  {"Nokia Mobile Phones (MTP mode)", 0x0421, 0x04e1, DEVICE_FLAG_NONE },
+  // From: Mitchell Hicks <mitchix@yahoo.com>
+  {"Nokia 5300 Mobile Phone", 0x0421, 0x04ba, DEVICE_FLAG_NONE },
+  {"Some Nokia Mobile Phone (MTP mode)", 0x0421, 0x04e1, DEVICE_FLAG_NONE },
+  // From: Pat Nicholls <pat@patandannie.co.uk>
+  {"Nokia N80 Internet Edition (Media Player)", 0x0421, 0x04f1, DEVICE_FLAG_UNLOAD_DRIVER },
 
   /*
    * LOGIK
    * Sold in the UK, seem to be manufactured by CCTech in China.
    */
-  {"Logik LOG DAX MP3 and DAB Player", 0x13d1, 0x7002, DEVICE_FLAG_NONE },
+  {"Logik LOG DAX MP3 and DAB Player", 0x13d1, 0x7002, DEVICE_FLAG_UNLOAD_DRIVER },
+
+  /*
+   * RCA / Thomson
+   */
+  {"Thomson Opal / RCA Lyra MC4002", 0x069b, 0x0777, DEVICE_FLAG_NONE },
+  
+  /*
+   * NTT DoCoMo
+   */
+  {"FOMA F903iX HIGH-SPEED", 0x04c5, 0x1140, DEVICE_FLAG_NONE },
+
+  /*
+   * Palm device userland program named Pocket Tunes
+   * Reported by Peter Gyongyosi <gyp@impulzus.com>
+   */
+  {"Palm / Handspring Pocket Tunes", 0x1703, 0x0001, DEVICE_FLAG_NONE },
+
+  /*
+   * TrekStor devices
+   * Their datasheet claims their devices are dualmode so probably needs to
+   * unload the attached drivers here.
+   */
+  // Reported by Cristi Magherusan <majeru@gentoo.ro>
+  {"TrekStor Vibez i.Beat sweez FM", 0x0402, 0x0611, DEVICE_FLAG_UNLOAD_DRIVER },
+  // Reported by Stefan Voss <svoss@web.de>
+  {"TrekStor Vibez 8/12GB", 0x066f, 0x842a, DEVICE_FLAG_UNLOAD_DRIVER },
+  
+  /*
+   * Disney (have had no reports of this actually working.)
+   */
+  // Reported by XNJB user
+  {"Disney MixMax", 0x0aa6, 0x6021, DEVICE_FLAG_NONE },
+
+  /*
+   * Cowon Systems, Inc.
+   * The iAudio audiophile devices don't encourage the use of MTP.
+   */
+  // Reported by Roberth Karman
+  {"Cowon iAudio 7 (MTP mode)", 0x0e21, 0x0751, DEVICE_FLAG_NONE },
+  // Reported by TJ Something <tjbk_tjb@users.sourceforge.net>
+  {"Cowon D2 (MTP mode)", 0x0e21, 0x0801, DEVICE_FLAG_NONE },
 
   /*
    * Other strange stuff.
@@ -402,11 +495,17 @@ void free_mtpdevice_list(mtpdevice_list_t *devlist)
 }
 
 /**
- * This checks if a device has an MTP descriptor.
+ * This checks if a device has an MTP descriptor. The descriptor was
+ * elaborated about in gPhoto bug 1482084, and some official documentation
+ * with no strings attached was published by Microsoft at
+ * http://www.microsoft.com/whdc/system/bus/USB/USBFAQ_intermed.mspx#E3HAC
+ *
  * @param dev a device struct from libusb.
+ * @param dumpfile set to non-NULL to make the descriptors dump out
+ *        to this file in human-readable hex so we can scruitinze them.
  * @return 1 if the device is MTP compliant, 0 if not.
  */
-static int device_has_descriptor(struct usb_device *dev)
+static int probe_device_descriptor(struct usb_device *dev, FILE *dumpfile)
 {
   usb_dev_handle *devh;
   unsigned char buf[1024], cmd;
@@ -426,6 +525,12 @@ static int device_has_descriptor(struct usb_device *dev)
   
   /* Read the special descriptor */
   ret = usb_get_descriptor(devh, 0x03, 0xee, buf, sizeof(buf));
+
+  // Dump it, if requested
+  if (dumpfile != NULL && ret > 0) {
+    fprintf(dumpfile, "Microsoft device descriptor 0xee:\n");
+    data_dump_ascii(dumpfile, buf, ret, 16);
+  }
   
   /* Check if descriptor length is at least 10 bytes */
   if (ret < 10) {
@@ -450,6 +555,12 @@ static int device_has_descriptor(struct usb_device *dev)
 			 (char *) buf,
 			 sizeof(buf),
 			 1000);
+
+  // Dump it, if requested
+  if (dumpfile != NULL && ret > 0) {
+    fprintf(dumpfile, "Microsoft device response to control message 1, CMD 0x%02x:\n", cmd);
+    data_dump_ascii(dumpfile, buf, ret, 16);
+  }
   
   /* If this is true, the device either isn't MTP or there was an error */
   if (ret <= 0x15) {
@@ -477,6 +588,12 @@ static int device_has_descriptor(struct usb_device *dev)
 			 (char *) buf,
 			 sizeof(buf),
 			 1000);
+
+  // Dump it, if requested
+  if (dumpfile != NULL && ret > 0) {
+    fprintf(dumpfile, "Microsoft device response to control message 2, CMD 0x%02x:\n", cmd);
+    data_dump_ascii(dumpfile, buf, ret, 16);
+  }
   
   /* If this is true, the device errored against control message 2 */
   if (ret == -1) {
@@ -530,7 +647,7 @@ static LIBMTP_error_number_t get_mtp_usb_device_list(mtpdevice_list_t ** mtp_dev
   for (; bus != NULL; bus = bus->next) {
     struct usb_device *dev = bus->devices;
     for (; dev != NULL; dev = dev->next) {
-      if (device_has_descriptor(dev)) {
+      if (probe_device_descriptor(dev, NULL)) {
 	/* Append this usb device to the MTP USB Device List */
 	*mtp_device_list = append_to_mtpdevice_list(*mtp_device_list, dev);
       } else {
@@ -615,6 +732,7 @@ void dump_usbinfo(PTP_USB *ptp_usb)
   printf("   OUT endpoint maxpacket: %d bytes\n", ptp_usb->outep_maxpacket);
   printf("   Device flags: 0x%08x\n", ptp_usb->device_flags);
   // TODO: add in string dumps for iManufacturer, iProduct, iSerialnumber...
+  (void) probe_device_descriptor(dev, stdout);
 }
 
 static void
@@ -1112,7 +1230,6 @@ ptp_usb_getdata (PTPParams* params, PTPContainer* ptp, PTPDataHandler *handler)
 {
 	uint16_t ret;
 	PTPUSBBulkContainer usbdata;
-	unsigned char	*data;
 	unsigned long	written;
 
 	memset(&usbdata,0,sizeof(usbdata));
@@ -1195,7 +1312,6 @@ ptp_usb_getdata (PTPParams* params, PTPContainer* ptp, PTPDataHandler *handler)
 		if (dtoh32(usbdata.length) > 12 && (rlen==12))
 			params->split_header_data = 1;
 
-		data = malloc(PTP_USB_BULK_HS_MAX_PACKET_LEN_READ);
 		/* Copy first part of data to 'data' */
 		handler->putfunc(
 			params, handler->private, rlen - PTP_USB_BULK_HDR_LEN, usbdata.payload.data,
