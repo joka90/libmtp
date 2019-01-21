@@ -44,15 +44,11 @@
 /* To enable debug prints, switch on this */
 //#define ENABLE_USB_BULK_DEBUG
 
-/* OUR APPLICATION USB URB (2MB) ;) */
-#define PTPCAM_USB_URB		2097152
-
 /* this must not be too short - the original 4000 was not long
    enough for big file transfers. I imagine the player spends a 
    bit of time gearing up to receiving lots of data. This also makes
    connecting/disconnecting more reliable */
 #define USB_TIMEOUT		10000
-#define USB_CAPTURE_TIMEOUT	20000
 
 /* USB control message data phase direction */
 #ifndef USB_DP_HTD
@@ -76,26 +72,34 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
   /*
    * Creative Technology
    * Initially the Creative devices was all we supported so these are
-   * the most thoroughly tested devices.
+   * the most thoroughly tested devices. Presumably only the devices
+   * with older firmware (the ones that have 32bit object size) will
+   * need the DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL flag.
    */
-  { "Creative Zen Vision", 0x041e, 0x411f, DEVICE_FLAG_NONE },
-  { "Creative Portable Media Center", 0x041e, 0x4123, DEVICE_FLAG_NONE },
-  { "Creative Zen Xtra (MTP mode)", 0x041e, 0x4128, DEVICE_FLAG_NONE },
-  { "Second generation Dell DJ", 0x041e, 0x412f, DEVICE_FLAG_NONE },
-  { "Creative Zen Micro (MTP mode)", 0x041e, 0x4130, DEVICE_FLAG_NONE },
-  { "Creative Zen Touch (MTP mode)", 0x041e, 0x4131, DEVICE_FLAG_NONE },
-  { "Dell Pocket DJ (MTP mode)", 0x041e, 0x4132, DEVICE_FLAG_NONE },
-  { "Creative Zen Sleek (MTP mode)", 0x041e, 0x4137, DEVICE_FLAG_NONE },
-  { "Creative Zen MicroPhoto", 0x041e, 0x413c, DEVICE_FLAG_NONE },
-  { "Creative Zen Sleek Photo", 0x041e, 0x413d, DEVICE_FLAG_NONE },
-  { "Creative Zen Vision:M", 0x041e, 0x413e, DEVICE_FLAG_NONE },
+  { "Creative ZEN Vision", 0x041e, 0x411f, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
+  { "Creative Portable Media Center", 0x041e, 0x4123, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
+  { "Creative ZEN Xtra (MTP mode)", 0x041e, 0x4128, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
+  { "Second generation Dell DJ", 0x041e, 0x412f, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
+  { "Creative ZEN Micro (MTP mode)", 0x041e, 0x4130, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
+  { "Creative ZEN Touch (MTP mode)", 0x041e, 0x4131, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
+  { "Dell Pocket DJ (MTP mode)", 0x041e, 0x4132, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
+  { "Creative ZEN Sleek (MTP mode)", 0x041e, 0x4137, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
+  { "Creative ZEN MicroPhoto", 0x041e, 0x413c, DEVICE_FLAG_NONE },
+  { "Creative ZEN Sleek Photo", 0x041e, 0x413d, DEVICE_FLAG_NONE },
+  { "Creative ZEN Vision:M", 0x041e, 0x413e, DEVICE_FLAG_NO_RELEASE_INTERFACE },
   // Reported by marazm@o2.pl
-  { "Creative Zen V", 0x041e, 0x4150, DEVICE_FLAG_NONE },
+  { "Creative ZEN V", 0x041e, 0x4150, DEVICE_FLAG_NONE },
   // Reported by danielw@iinet.net.au
-  { "Creative Zen Vision:M (DVP-HD0004)", 0x041e, 0x4151, DEVICE_FLAG_NONE },
+  // This version of the Vision:M needs the no release interface flag,
+  // unclear whether the other version above need it too or not.
+  { "Creative ZEN Vision:M (DVP-HD0004)", 0x041e, 0x4151, DEVICE_FLAG_NO_RELEASE_INTERFACE },
   // Reported by Darel on the XNJB forums
-  { "Creative Zen V Plus", 0x041e, 0x4152, DEVICE_FLAG_NONE },
-  { "Creative Zen Vision W", 0x041e, 0x4153, DEVICE_FLAG_NONE },
+  { "Creative ZEN V Plus", 0x041e, 0x4152, DEVICE_FLAG_NONE },
+  { "Creative ZEN Vision W", 0x041e, 0x4153, DEVICE_FLAG_NONE },
+  // Reported by Paul Kurczaba <paul@kurczaba.com>
+  { "Creative ZEN 8GB", 0x041e, 0x4157, DEVICE_FLAG_IGNORE_HEADER_ERRORS },
+  // Reported by Ringofan <mcroman@users.sourceforge.net>
+  { "Creative ZEN V 2GB", 0x041e, 0x4158, DEVICE_FLAG_NONE },
 
   /*
    * Samsung
@@ -105,14 +109,15 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
   { "Samsung YH-920", 0x04e8, 0x5022, DEVICE_FLAG_UNLOAD_DRIVER },
   // Contributed by aronvanammers on SourceForge
   { "Samsung YH-925GS", 0x04e8, 0x5024, DEVICE_FLAG_NONE },
-  // From libgphoto2
-  { "Samsung YH-820", 0x04e8, 0x502e, DEVICE_FLAG_NONE },
+  // From libgphoto2, according to tests by Stephan Fabel it cannot
+  // get all objects with the getobjectproplist command..
+  { "Samsung YH-820", 0x04e8, 0x502e, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
   // Contributed by polux2001@users.sourceforge.net
-  { "Samsung YH-925(-GS)", 0x04e8, 0x502f, DEVICE_FLAG_NONE },
+  { "Samsung YH-925(-GS)", 0x04e8, 0x502f, DEVICE_FLAG_UNLOAD_DRIVER },
   // Contributed by anonymous person on SourceForge
   { "Samsung YH-J70J", 0x04e8, 0x5033, DEVICE_FLAG_UNLOAD_DRIVER },
   // From XNJB user
-  { "Samsung YP-Z5", 0x04e8, 0x503c, DEVICE_FLAG_NONE },
+  { "Samsung YP-Z5", 0x04e8, 0x503c, DEVICE_FLAG_UNLOAD_DRIVER },
   // From XNJB user
   { "Samsung YP-Z5 2GB", 0x04e8, 0x5041, DEVICE_FLAG_NONE },
   // Contributed by anonymous person on SourceForge
@@ -123,9 +128,7 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
   { "Samsung YP-F2J", 0x04e8, 0x5057, DEVICE_FLAG_UNLOAD_DRIVER },
   // Reported by Patrick <skibler@gmail.com>
   { "Samsung YP-K5", 0x04e8, 0x505a, DEVICE_FLAG_NO_ZERO_READS },
-  // From dev.local@gmail.com
-  // A bit suspicious about this, is this really the MTP mode?
-  { "Samsung YP-U3QB/XER", 0x04e8, 0x507c, DEVICE_FLAG_NONE },
+  // From dev.local@gmail.com - 0x4e8/0x507c is the UMS mode, don't add this.
   // From m.eik michalke
   { "Samsung YP-U3", 0x04e8, 0x507d, DEVICE_FLAG_NONE },
   // Reported by Matthew Wilcox <matthew@wil.cx>
@@ -161,8 +164,12 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
   { "Philips HDD085/00 and HDD082/17", 0x0471, 0x014d, DEVICE_FLAG_NONE },
   // from XNJB forum
   { "Philips GoGear SA9200", 0x0471, 0x014f, DEVICE_FLAG_NONE },
+  // From John Coppens <jcoppens@users.sourceforge.net>
+  { "Philips SA1115/55", 0x0471, 0x0164, DEVICE_FLAG_NONE },
   // From Gerhard Mekenkamp
   { "Philips GoGear Audio", 0x0471, 0x0165, DEVICE_FLAG_NONE },
+  // from David Holm <wormie@alberg.dk>
+  { "Philips Shoqbox", 0x0471, 0x0172, DEVICE_FLAG_ONLY_7BIT_FILENAMES },
   // from npedrosa
   { "Philips PSA610", 0x0471, 0x0181, DEVICE_FLAG_NONE },
   // From libgphoto2 source
@@ -175,28 +182,44 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
    * SanDisk
    * several devices (c150 for sure) are definately dual-mode and must 
    * have the USB mass storage driver that hooks them unloaded first.
+   * They all have problematic dual-mode making the device unload effect
+   * uncertain on these devices. All except for the Linux based ones seem
+   * to need DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL.
    */
   // Reported by Brian Robison
-  { "SanDisk Sansa m230/m240", 0x0781, 0x7400, DEVICE_FLAG_UNLOAD_DRIVER },
+  { "SanDisk Sansa m230/m240", 0x0781, 0x7400, 
+    DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL |
+    DEVICE_FLAG_NO_RELEASE_INTERFACE },
   // Reported by tangent_@users.sourceforge.net
-  { "SanDisk Sansa c150", 0x0781, 0x7410, DEVICE_FLAG_UNLOAD_DRIVER },
+  { "SanDisk Sansa c150", 0x0781, 0x7410, 
+    DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL |
+    DEVICE_FLAG_NO_RELEASE_INTERFACE },
   // From libgphoto2 source
   // Reported by <gonkflea@users.sourceforge.net>
   // Reported by Mike Owen <mikeowen@computerbaseusa.com>
-  { "SanDisk Sansa e200/e250/e260/e270/e280", 0x0781, 0x7420, DEVICE_FLAG_UNLOAD_DRIVER },
+  { "SanDisk Sansa e200/e250/e260/e270/e280", 0x0781, 0x7420, 
+    DEVICE_FLAG_UNLOAD_DRIVER |  DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL |
+    DEVICE_FLAG_NO_RELEASE_INTERFACE },
   // Reported by XNJB user
-  { "SanDisk Sansa e280", 0x0781, 0x7421, DEVICE_FLAG_UNLOAD_DRIVER },
+  { "SanDisk Sansa e280", 0x0781, 0x7421, 
+    DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL |
+    DEVICE_FLAG_NO_RELEASE_INTERFACE },
   // Reported by anonymous user at sourceforge.net
-  { "SanDisk Sansa c250", 0x0781, 0x7450, DEVICE_FLAG_UNLOAD_DRIVER },
+  { "SanDisk Sansa c240/c250", 0x0781, 0x7450, 
+    DEVICE_FLAG_UNLOAD_DRIVER |  DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL |
+    DEVICE_FLAG_NO_RELEASE_INTERFACE },
   // Reported by XNJB user, and Miguel de Icaza <miguel@gnome.org>
   // This has no dual-mode so no need to unload any driver.
   // This is a Linux based device!
   { "SanDisk Sansa Connect", 0x0781, 0x7480, DEVICE_FLAG_NONE },
   // Reported by Troy Curtis Jr.
-  { "SanDisk Sansa Express", 0x0781, 0x7460, DEVICE_FLAG_UNLOAD_DRIVER |
-                                             DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  { "SanDisk Sansa Express", 0x0781, 0x7460, 
+    DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | 
+    DEVICE_FLAG_NO_RELEASE_INTERFACE },
   // Reported by XNJB user
-  { "SanDisk Sansa m240", 0x0781, 0x7430, DEVICE_FLAG_UNLOAD_DRIVER },
+  { "SanDisk Sansa m240", 0x0781, 0x7430, 
+    DEVICE_FLAG_UNLOAD_DRIVER |  DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL |
+    DEVICE_FLAG_NO_RELEASE_INTERFACE },
   
 
   /*
@@ -293,16 +316,20 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
   
   /*
    * Archos
+   * These devices have some dual-mode interfaces which will really
+   * respect the driver unloading, so DEVICE_FLAG_UNLOAD_DRIVER
+   * really work on these devices!
    */
-  // Reported by gudul1@users.sourceforge.net
-  { "Archos 104 (MTP mode)", 0x0e79, 0x120a, DEVICE_FLAG_NONE },
-  // Added by Jan Binder
-  { "Archos XS202 (MTP mode)", 0x0e79, 0x1208, DEVICE_FLAG_NONE },
-  // Reported by Etienne Chauchot <chauchot.etienne@free.fr>
-  // This seems to be dual-mode and thus need to have the unload flag.
-  { "Archos 504 (MTP mode)", 0x0e79, 0x1307, DEVICE_FLAG_UNLOAD_DRIVER },
   // Reported by Alexander Haertig <AlexanderHaertig@gmx.de>
   { "Archos Gmini XS100", 0x0e79, 0x1207, DEVICE_FLAG_UNLOAD_DRIVER },
+  // Added by Jan Binder
+  { "Archos XS202 (MTP mode)", 0x0e79, 0x1208, DEVICE_FLAG_NONE },
+  // Reported by gudul1@users.sourceforge.net
+  { "Archos 104 (MTP mode)", 0x0e79, 0x120a, DEVICE_FLAG_NONE },
+  // Reported by Etienne Chauchot <chauchot.etienne@free.fr>
+  { "Archos 504 (MTP mode)", 0x0e79, 0x1307, DEVICE_FLAG_UNLOAD_DRIVER },
+  // Reported by Kay McCormick <kaym@modsystems.com>
+  { "Archos 704 mobile dvr", 0x0e79, 0x130d, DEVICE_FLAG_UNLOAD_DRIVER },
 
   /*
    * Dunlop (OEM of EGOMAN ltd?) reported by Nanomad
@@ -337,6 +364,8 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
    */
   // From: Mitchell Hicks <mitchix@yahoo.com>
   {"Nokia 5300 Mobile Phone", 0x0421, 0x04ba, DEVICE_FLAG_NONE },
+  // From Christian Arnold <webmaster@arctic-media.de>
+  {"Nokia N73 Mobile Phone", 0x0421, 0x04d1, DEVICE_FLAG_UNLOAD_DRIVER },
   // From Swapan <swapan@yahoo.com>
   {"Nokia N75 Mobile Phone", 0x0421, 0x04e1, DEVICE_FLAG_NONE },
   // From: Pat Nicholls <pat@patandannie.co.uk>
@@ -351,7 +380,12 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
   /*
    * RCA / Thomson
    */
+  // From kiki <omkiki@users.sourceforge.net>
+  {"Thomson EM28 Series", 0x069b, 0x0774, DEVICE_FLAG_NONE },
   {"Thomson Opal / RCA Lyra MC4002", 0x069b, 0x0777, DEVICE_FLAG_NONE },
+  // From Svenna <svenna@svenna.de>
+  // Not confirmed to be MTP.
+  {"Thomson scenium E308", 0x069b, 0x3028, DEVICE_FLAG_NONE },
   
   /*
    * NTT DoCoMo
@@ -363,6 +397,8 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
    * Reported by Peter Gyongyosi <gyp@impulzus.com>
    */
   {"Palm / Handspring Pocket Tunes", 0x1703, 0x0001, DEVICE_FLAG_NONE },
+  // Reported by anonymous submission
+  {"Palm / Handspring Pocket Tunes 4", 0x1703, 0x0002, DEVICE_FLAG_NONE },
 
   /*
    * TrekStor devices
@@ -384,11 +420,27 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
    * Cowon Systems, Inc.
    * The iAudio audiophile devices don't encourage the use of MTP.
    */
+  // Reported by Patrik Johansson <Patrik.Johansson@qivalue.com>
+  {"Cowon iAudio U3 (MTP mode)", 0x0e21, 0x0701, DEVICE_FLAG_NONE },
   // Reported by Roberth Karman
   {"Cowon iAudio 7 (MTP mode)", 0x0e21, 0x0751, DEVICE_FLAG_NONE },
   // Reported by TJ Something <tjbk_tjb@users.sourceforge.net>
-  {"Cowon D2 (MTP mode)", 0x0e21, 0x0801, DEVICE_FLAG_NONE },
+  {"Cowon iAudio D2 (MTP mode)", 0x0e21, 0x0801, 
+   DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL },
 
+  /*
+   * Insignia, dual-mode.
+   */
+  {"Insignia NS-DV45", 0x19ff, 0x0303, DEVICE_FLAG_UNLOAD_DRIVER },
+  // Reported by "brad" (anonymous, sourceforge)
+  {"Insignia Pilot 4GB", 0x19ff, 0x0309, DEVICE_FLAG_UNLOAD_DRIVER },
+
+  /*
+   * LG Electronics
+   */
+  // Not verified - anonymous submission
+  { "LG UP3", 0x043e, 0x70b1, DEVICE_FLAG_NONE },
+  
   /*
    * Other strange stuff.
    */
@@ -396,12 +448,16 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
 };
 static const int mtp_device_table_size = sizeof(mtp_device_table) / sizeof(LIBMTP_device_entry_t);
 
-int ptpcam_usb_timeout = USB_TIMEOUT;
-
 // Local functions
 static struct usb_bus* init_usb();
-static void close_usb(PTP_USB* ptp_usb, uint8_t interfaceNumber);
-static void find_endpoints(struct usb_device *dev, int* inep, int* inep_maxpacket, int* outep, int* outep_maxpacket, int* intep);
+static void close_usb(PTP_USB* ptp_usb);
+static void find_interface_and_endpoints(struct usb_device *dev,
+					 uint8_t *interface,
+					 int* inep, 
+					 int* inep_maxpacket, 
+					 int* outep, 
+					 int* outep_maxpacket, 
+					 int* intep);
 static void clear_stall(PTP_USB* ptp_usb);
 static int init_ptp_usb (PTPParams* params, PTP_USB* ptp_usb, struct usb_device* dev);
 static short ptp_write_func (unsigned long,PTPDataHandler*,void *data,unsigned long*);
@@ -492,7 +548,7 @@ void free_mtpdevice_list(mtpdevice_list_t *devlist)
   while (tmplist != NULL) {
     mtpdevice_list_t *tmp = tmplist;
     tmplist = tmplist->next;
-    // Do not free() the fields (ptp_usb, parms)! These are used elsewhere.
+    // Do not free() the fields (ptp_usb, params)! These are used elsewhere.
     free(tmp);
   }
   return;
@@ -558,7 +614,7 @@ static int probe_device_descriptor(struct usb_device *dev, FILE *dumpfile)
 			 4,
 			 (char *) buf,
 			 sizeof(buf),
-			 1000);
+			 USB_TIMEOUT);
 
   // Dump it, if requested
   if (dumpfile != NULL && ret > 0) {
@@ -591,7 +647,7 @@ static int probe_device_descriptor(struct usb_device *dev, FILE *dumpfile)
 			 5,
 			 (char *) buf,
 			 sizeof(buf),
-			 1000);
+			 USB_TIMEOUT);
 
   // Dump it, if requested
   if (dumpfile != NULL && ret > 0) {
@@ -641,32 +697,38 @@ static int probe_device_descriptor(struct usb_device *dev, FILE *dumpfile)
  *        properties (if this list is not empty, new entries will be appended
  *        to the list).
  * @return LIBMTP_ERROR_NONE implies that devices have been found, scan the list
- *        appropriately. LIBMTP_ERROR_NO_DEVICE_ATTACHED implies that no devices have
- *        been found.
+ *        appropriately. LIBMTP_ERROR_NO_DEVICE_ATTACHED implies that no 
+ *        devices have been found.
  */
 static LIBMTP_error_number_t get_mtp_usb_device_list(mtpdevice_list_t ** mtp_device_list)
 {
   struct usb_bus *bus = init_usb();
-
   for (; bus != NULL; bus = bus->next) {
     struct usb_device *dev = bus->devices;
     for (; dev != NULL; dev = dev->next) {
-      if (probe_device_descriptor(dev, NULL)) {
-	/* Append this usb device to the MTP USB Device List */
-	*mtp_device_list = append_to_mtpdevice_list(*mtp_device_list, dev);
-      } else {
-	/* Check if it's in the known devices list then */
+      if (dev->descriptor.bDeviceClass != USB_CLASS_HUB) {
 	int i;
-	
-	for(i = 0; i < mtp_device_table_size; i++) {
-	  if(dev->descriptor.bDeviceClass != USB_CLASS_HUB && 
-	     dev->descriptor.idVendor == mtp_device_table[i].vendor_id &&
-	     dev->descriptor.idProduct == mtp_device_table[i].product_id) {
-	    /* Append this usb device to the MTP device list */
-	    *mtp_device_list = append_to_mtpdevice_list(*mtp_device_list, dev);
-	    break;
-	  }
-	}
+        int found = 0;
+
+	// First check if we know about the device already.
+	// Devices well known to us will not have their descriptors
+	// probed, it caused problems with some devices.
+        for(i = 0; i < mtp_device_table_size; i++) {
+          if(dev->descriptor.idVendor == mtp_device_table[i].vendor_id &&
+            dev->descriptor.idProduct == mtp_device_table[i].product_id) {
+            /* Append this usb device to the MTP device list */
+            *mtp_device_list = append_to_mtpdevice_list(*mtp_device_list, dev);
+            found = 1;
+            break;
+          }
+        }
+	// If we didn't know it, try probing the "OS Descriptor".
+        if (!found) {
+          if (probe_device_descriptor(dev, NULL)) {
+            /* Append this usb device to the MTP USB Device List */
+            *mtp_device_list = append_to_mtpdevice_list(*mtp_device_list, dev);
+          }
+        }
       }
     }
   }
@@ -720,7 +782,7 @@ void dump_usbinfo(PTP_USB *ptp_usb)
   char devname[0x10];
   
   devname[0] = '\0';
-  res = usb_get_driver_np(ptp_usb->handle, ptp_usb->interface, devname, sizeof(devname));
+  res = usb_get_driver_np(ptp_usb->handle, (int) ptp_usb->interface, devname, sizeof(devname));
   if (devname[0] != '\0') {
     printf("   Using kernel interface \"%s\"\n", devname);
   }
@@ -844,7 +906,7 @@ ptp_read_func (
 #ifdef ENABLE_USB_BULK_DEBUG
     printf("Reading in 0x%04x bytes\n", toread);
 #endif
-    result = USB_BULK_READ(ptp_usb->handle, ptp_usb->inep, (char*)bytes, toread, ptpcam_usb_timeout);
+    result = USB_BULK_READ(ptp_usb->handle, ptp_usb->inep, (char*)bytes, toread, USB_TIMEOUT);
 #ifdef ENABLE_USB_BULK_DEBUG
     printf("Result of read: 0x%04x\n", result);
 #endif
@@ -882,9 +944,13 @@ ptp_read_func (
 	ptp_usb->callback_active = 0;
       }
       if (ptp_usb->current_transfer_callback != NULL) {
-	(void) ptp_usb->current_transfer_callback(ptp_usb->current_transfer_complete,
-						  ptp_usb->current_transfer_total,
-						  ptp_usb->current_transfer_callback_data);
+	int ret;
+	ret = ptp_usb->current_transfer_callback(ptp_usb->current_transfer_complete,
+						 ptp_usb->current_transfer_total,
+						 ptp_usb->current_transfer_callback_data);
+	if (ret != 0) {
+	  return PTP_ERROR_CANCEL;
+	}
       }
     }  
 
@@ -905,7 +971,7 @@ ptp_read_func (
     printf("<==USB IN\n");
     printf("Zero Read\n");
 #endif
-    zeroresult = USB_BULK_READ(ptp_usb->handle, ptp_usb->inep, &temp, 0, ptpcam_usb_timeout);
+    zeroresult = USB_BULK_READ(ptp_usb->handle, ptp_usb->inep, &temp, 0, USB_TIMEOUT);
     if (zeroresult != 0)
       printf("LIBMTP panic: unable to read in zero packet, response 0x%04x", zeroresult);
   }
@@ -946,7 +1012,7 @@ ptp_write_func (
       }
     }
     handler->getfunc(NULL, handler->private,towrite,bytes,&towrite);
-    result = USB_BULK_WRITE(ptp_usb->handle,ptp_usb->outep,(char*)bytes,towrite,ptpcam_usb_timeout);
+    result = USB_BULK_WRITE(ptp_usb->handle,ptp_usb->outep,(char*)bytes,towrite,USB_TIMEOUT);
 #ifdef ENABLE_USB_BULK_DEBUG
     printf("USB OUT==>\n");
     data_dump_ascii (stdout,bytes,towrite,16);
@@ -966,9 +1032,13 @@ ptp_write_func (
 	ptp_usb->callback_active = 0;
       }
       if (ptp_usb->current_transfer_callback != NULL) {
-	(void) ptp_usb->current_transfer_callback(ptp_usb->current_transfer_complete,
-						  ptp_usb->current_transfer_total,
-						  ptp_usb->current_transfer_callback_data);
+	int ret;
+	ret = ptp_usb->current_transfer_callback(ptp_usb->current_transfer_complete,
+						 ptp_usb->current_transfer_total,
+						 ptp_usb->current_transfer_callback_data);
+	if (ret != 0) {
+	  return PTP_ERROR_CANCEL;
+	}
       }
     }
     if (result < towrite) /* short writes happen */
@@ -987,7 +1057,7 @@ ptp_write_func (
       printf("USB OUT==>\n");
       printf("Zero Write\n");
 #endif
-      result=USB_BULK_WRITE(ptp_usb->handle,ptp_usb->outep,(char *)"x",0,ptpcam_usb_timeout);
+      result=USB_BULK_WRITE(ptp_usb->handle,ptp_usb->outep,(char *)"x",0,USB_TIMEOUT);
     }
   }
     
@@ -1121,13 +1191,10 @@ ptp_usb_sendreq (PTPParams* params, PTPContainer* req)
 		&written
 	);
 	ptp_exit_send_memory_handler (&memhandler);
-	if (ret!=PTP_RC_OK) {
+	if (ret!=PTP_RC_OK && ret!=PTP_ERROR_CANCEL) {
 		ret = PTP_ERROR_IO;
-/*		ptp_error (params,
-			"PTP: request code 0x%04x sending req error 0x%04x",
-			req->Code,ret); */
 	}
-	if (written != towrite) {
+	if (written != towrite && ret != PTP_ERROR_CANCEL && ret != PTP_ERROR_IO) {
 		ptp_error (params, 
 			"PTP: request code 0x%04x sending req wrote only %ld bytes instead of %d",
 			req->Code, written, towrite
@@ -1176,10 +1243,6 @@ ptp_usb_senddata (PTPParams* params, PTPContainer* ptp,
 	ret = ptp_write_func(wlen, &memhandler, params->data, &written);
 	ptp_exit_send_memory_handler (&memhandler);
 	if (ret!=PTP_RC_OK) {
-		ret = PTP_ERROR_IO;
-/*		ptp_error (params,
-		"PTP: request code 0x%04x sending data error 0x%04x",
-			ptp->Code,ret);*/
 		return ret;
 	}
 	if (size <= datawlen) return ret;
@@ -1196,7 +1259,7 @@ ptp_usb_senddata (PTPParams* params, PTPContainer* ptp,
 		}
 		bytes_left_to_transfer -= written;
 	}
-	if (ret!=PTP_RC_OK)
+	if (ret!=PTP_RC_OK && ret!=PTP_ERROR_CANCEL)
 		ret = PTP_ERROR_IO;
 	return ret;
 }
@@ -1235,6 +1298,7 @@ ptp_usb_getdata (PTPParams* params, PTPContainer* ptp, PTPDataHandler *handler)
 	uint16_t ret;
 	PTPUSBBulkContainer usbdata;
 	unsigned long	written;
+	PTP_USB *ptp_usb = (PTP_USB *) params->data;
 
 	memset(&usbdata,0,sizeof(usbdata));
 	do {
@@ -1244,14 +1308,29 @@ ptp_usb_getdata (PTPParams* params, PTPContainer* ptp, PTPDataHandler *handler)
 		if (ret!=PTP_RC_OK) {
 			ret = PTP_ERROR_IO;
 			break;
-		} else
+		}
 		if (dtoh16(usbdata.type)!=PTP_USB_CONTAINER_DATA) {
 			ret = PTP_ERROR_DATA_EXPECTED;
 			break;
-		} else
+		}
 		if (dtoh16(usbdata.code)!=ptp->Code) {
-			ret = dtoh16(usbdata.code);
-			break;
+			if (ptp_usb->device_flags & DEVICE_FLAG_IGNORE_HEADER_ERRORS) {
+				ptp_debug (params, "ptp2/ptp_usb_getdata: detected a broken "
+					   "PTP header, code field insane, expect problems! (But continuing)");
+				ret = PTP_RC_OK;
+			} else {
+				ret = dtoh16(usbdata.code);
+				// This filters entirely insane garbage return codes, but still
+				// makes it possible to return error codes in the code field when
+				// getting data. It appears Windows ignores the contents of this 
+				// field entirely.
+				if (ret < PTP_RC_Undefined || ret > PTP_RC_SpecificationOfDestinationUnsupported) {
+					ptp_debug (params, "ptp2/ptp_usb_getdata: detected a broken "
+						   "PTP header, code field insane.");
+					ret = PTP_ERROR_IO;
+				}
+				break;
+			}
 		}
 		if (usbdata.length == 0xffffffffU) {
 			/* stuff data directly to passed data handler */
@@ -1266,8 +1345,8 @@ ptp_usb_getdata (PTPParams* params, PTPContainer* ptp, PTPDataHandler *handler)
 					&readdata,
 					0
 				);
-				if (xret == -1)
-					return PTP_ERROR_IO;
+				if (xret != PTP_RC_OK)
+					return ret;
 				if (readdata < PTP_USB_BULK_HS_MAX_PACKET_LEN_READ)
 					break;
 			}
@@ -1295,12 +1374,11 @@ ptp_usb_getdata (PTPParams* params, PTPContainer* ptp, PTPDataHandler *handler)
 				       (uint8_t *) &usbdata + packlen, surplen);
 				params->response_packet_size = surplen;
 			/* Ignore reading one extra byte if device flags have been set */
-			} else if( !(((PTP_USB *)params->data)->device_flags &
-																						DEVICE_FLAG_NO_ZERO_READS &&
-									rlen - dtoh32(usbdata.length) == 1)) {
-				ptp_debug (params, "ptp2/ptp_usb_getdata: read %d bytes "
-					   "too much, expect problems!", 
-					   rlen - dtoh32(usbdata.length));
+			} else if(( !(ptp_usb->device_flags & DEVICE_FLAG_NO_ZERO_READS) &&
+				    rlen - dtoh32(usbdata.length) == 1)) {
+			  ptp_debug (params, "ptp2/ptp_usb_getdata: read %d bytes "
+				     "too much, expect problems!", 
+				     rlen - dtoh32(usbdata.length));
 			}
 			rlen = packlen;
 		}
@@ -1322,7 +1400,7 @@ ptp_usb_getdata (PTPParams* params, PTPContainer* ptp, PTPDataHandler *handler)
 			&written
 		);
     
-		if (((PTP_USB *)params->data)->device_flags & DEVICE_FLAG_NO_ZERO_READS && 
+		if (ptp_usb->device_flags & DEVICE_FLAG_NO_ZERO_READS && 
 		    len+PTP_USB_BULK_HDR_LEN == PTP_USB_BULK_HS_MAX_PACKET_LEN_READ) {
 #ifdef ENABLE_USB_BULK_DEBUG
 		  printf("Reading in extra terminating byte\n");
@@ -1330,42 +1408,36 @@ ptp_usb_getdata (PTPParams* params, PTPContainer* ptp, PTPDataHandler *handler)
 		  // need to read in extra byte and discard it
 		  int result = 0;
 		  char byte = 0;
-		  PTP_USB *ptp_usb = (PTP_USB *)params->data;
-		  result = USB_BULK_READ(ptp_usb->handle, ptp_usb->inep, &byte, 1, ptpcam_usb_timeout);
+		  result = USB_BULK_READ(ptp_usb->handle, ptp_usb->inep, &byte, 1, USB_TIMEOUT);
 		  
 		  if (result != 1)
 		    printf("Could not read in extra byte for PTP_USB_BULK_HS_MAX_PACKET_LEN_READ long file, return value 0x%04x\n", result);
 		} else if (len+PTP_USB_BULK_HDR_LEN == PTP_USB_BULK_HS_MAX_PACKET_LEN_READ && params->split_header_data == 0) {
+		  int zeroresult = 0;
+		  char zerobyte = 0;
+
 #ifdef ENABLE_USB_BULK_DEBUG
-      printf("Reading in zero packet after header\n");
+		  printf("Reading in zero packet after header\n");
 #endif
-      int zeroresult = 0;
-      char zerobyte = 0;
-      PTP_USB *ptp_usb = (PTP_USB *)params->data;
-      zeroresult = USB_BULK_READ(ptp_usb->handle, ptp_usb->inep, &zerobyte, 0, ptpcam_usb_timeout);
-      
-      if (zeroresult != 0)
-        printf("LIBMTP panic: unable to read in zero packet, response 0x%04x", zeroresult);
-    }
-    
-		/* Is that all of data? */
-		if (len+PTP_USB_BULK_HDR_LEN<=rlen) break;
+		  zeroresult = USB_BULK_READ(ptp_usb->handle, ptp_usb->inep, &zerobyte, 0, USB_TIMEOUT);
+		  
+		  if (zeroresult != 0)
+		    printf("LIBMTP panic: unable to read in zero packet, response 0x%04x", zeroresult);
+		}
 		
-		ret=ptp_read_func(len - (rlen - PTP_USB_BULK_HDR_LEN),
-				  handler,
-				  params->data, &rlen, 1);
+		/* Is that all of data? */
+		if (len+PTP_USB_BULK_HDR_LEN<=rlen) {
+		  break;
+		}
+		
+		ret = ptp_read_func(len - (rlen - PTP_USB_BULK_HDR_LEN),
+				    handler,
+				    params->data, &rlen, 1);
 		
 		if (ret!=PTP_RC_OK) {
-		  ret = PTP_ERROR_IO;
 		  break;
 		}
 	} while (0);
-	/*
-	if (ret!=PTP_RC_OK) {
-		ptp_error (params,
-		"PTP: request code 0x%04x getting data error 0x%04x",
-			ptp->Code, ret);
-	}*/
 	return ret;
 }
 
@@ -1429,15 +1501,15 @@ ptp_usb_event (PTPParams* params, PTPContainer* event, int wait)
 	ret = PTP_RC_OK;
 	switch(wait) {
 	case PTP_EVENT_CHECK:
-		result=USB_BULK_READ(ptp_usb->handle, ptp_usb->intep,(char *)&usbevent,sizeof(usbevent),ptpcam_usb_timeout);
+		result=USB_BULK_READ(ptp_usb->handle, ptp_usb->intep,(char *)&usbevent,sizeof(usbevent),USB_TIMEOUT);
 		if (result==0)
-			result = USB_BULK_READ(ptp_usb->handle, ptp_usb->intep,(char *) &usbevent, sizeof(usbevent), ptpcam_usb_timeout);
+			result = USB_BULK_READ(ptp_usb->handle, ptp_usb->intep,(char *) &usbevent, sizeof(usbevent), USB_TIMEOUT);
 		if (result < 0) ret = PTP_ERROR_IO;
 		break;
 	case PTP_EVENT_CHECK_FAST:
-		result=USB_BULK_READ(ptp_usb->handle, ptp_usb->intep,(char *)&usbevent,sizeof(usbevent),ptpcam_usb_timeout);
+		result=USB_BULK_READ(ptp_usb->handle, ptp_usb->intep,(char *)&usbevent,sizeof(usbevent),USB_TIMEOUT);
 		if (result==0)
-			result = USB_BULK_READ(ptp_usb->handle, ptp_usb->intep,(char *) &usbevent, sizeof(usbevent), ptpcam_usb_timeout);
+			result = USB_BULK_READ(ptp_usb->handle, ptp_usb->intep,(char *) &usbevent, sizeof(usbevent), USB_TIMEOUT);
 		if (result < 0) ret = PTP_ERROR_IO;
 		break;
 	default:
@@ -1478,6 +1550,21 @@ ptp_usb_event_wait (PTPParams* params, PTPContainer* event) {
 	return ptp_usb_event (params, event, PTP_EVENT_CHECK);
 }
 
+uint16_t
+ptp_usb_control_cancel_request (PTPParams *params, uint32_t transactionid) {
+	PTP_USB *ptp_usb = (PTP_USB *)(params->data);
+	int ret;
+	unsigned char buffer[6];
+
+	htod16a(&buffer[0],PTP_EC_CancelTransaction);
+	htod32a(&buffer[2],transactionid);
+	ret = usb_control_msg(ptp_usb->handle, 
+			      USB_TYPE_CLASS | USB_RECIP_INTERFACE,
+			      0x64, 0x0000, 0x0000, (char *) buffer, sizeof(buffer), USB_TIMEOUT);
+	if (ret < sizeof(buffer))
+		return PTP_ERROR_IO;
+	return PTP_RC_OK;
+}
 
 static int init_ptp_usb (PTPParams* params, PTP_USB* ptp_usb, struct usb_device* dev)
 {
@@ -1489,6 +1576,7 @@ static int init_ptp_usb (PTPParams* params, PTP_USB* ptp_usb, struct usb_device*
   params->senddata_func=ptp_usb_senddata;
   params->getresp_func=ptp_usb_getresp;
   params->getdata_func=ptp_usb_getdata;
+  params->cancelreq_func=ptp_usb_control_cancel_request;
   params->data=ptp_usb;
   params->transaction_id=0;
   /*
@@ -1510,7 +1598,7 @@ static int init_ptp_usb (PTPParams* params, PTP_USB* ptp_usb, struct usb_device*
      * accessible from user space.
      */
     if (ptp_usb->device_flags & DEVICE_FLAG_UNLOAD_DRIVER) {
-      if (usb_detach_kernel_driver_np(device_handle, dev->config->interface->altsetting->bInterfaceNumber)) {
+      if (usb_detach_kernel_driver_np(device_handle, (int) ptp_usb->interface)) {
 	// Totally ignore this error!
 	// perror("usb_detach_kernel_driver_np()");
       }
@@ -1523,11 +1611,10 @@ static int init_ptp_usb (PTPParams* params, PTP_USB* ptp_usb, struct usb_device*
       return -1;
     }
 #endif
-    if (usb_claim_interface(device_handle, dev->config->interface->altsetting->bInterfaceNumber)) {
+    if (usb_claim_interface(device_handle, (int) ptp_usb->interface)) {
       perror("usb_claim_interface()");
       return -1;
     }
-    ptp_usb->interface = dev->config->interface->altsetting->bInterfaceNumber;
   }
   return 0;
 }
@@ -1584,16 +1671,21 @@ static void clear_halt(PTP_USB* ptp_usb)
   }
 }
 
-static void close_usb(PTP_USB* ptp_usb, uint8_t interfaceNumber)
+static void close_usb(PTP_USB* ptp_usb)
 {
-  // Clear any stalled endpoints
-  clear_stall(ptp_usb);
-  // Clear halts on any endpoints
-  clear_halt(ptp_usb);
-  // Added to clear some stuff on the OUT endpoint
-  // TODO: is this good on the Mac too?
-  usb_resetep(ptp_usb->handle, ptp_usb->outep);
-  usb_release_interface(ptp_usb->handle, interfaceNumber);
+  // Commented out since it was confusing some
+  // devices to do these things.
+  if (!(ptp_usb->device_flags & DEVICE_FLAG_NO_RELEASE_INTERFACE)) {
+    // Clear any stalled endpoints
+    clear_stall(ptp_usb);
+    // Clear halts on any endpoints
+    clear_halt(ptp_usb);
+    // Added to clear some stuff on the OUT endpoint
+    // TODO: is this good on the Mac too?
+    // HINT: some devices may need that you comment these two out too.
+    usb_resetep(ptp_usb->handle, ptp_usb->outep);
+    usb_release_interface(ptp_usb->handle, (int) ptp_usb->interface);
+  }
   // Brutally reset device
   // TODO: is this good on the Mac too?
   usb_reset(ptp_usb->handle);
@@ -1687,6 +1779,9 @@ static LIBMTP_error_number_t configure_usb_devices(mtpdevice_list_t *devicelist)
       return LIBMTP_ERROR_MEMORY_ALLOCATION;
     }
     
+    /* Pointer back to params */
+    tmplist->ptp_usb->params = tmplist->params;
+
     /* TODO: Will this always be little endian? */
     tmplist->params->byteorder = PTP_DL_LE;
     tmplist->params->cd_locale_to_ucs2 = iconv_open("UCS-2LE", "UTF-8");
@@ -1703,7 +1798,8 @@ static LIBMTP_error_number_t configure_usb_devices(mtpdevice_list_t *devicelist)
     // no_of_ep = device->config->interface->altsetting->bNumEndpoints;
   
     /* Assign endpoints to usbinfo... */
-    find_endpoints(tmplist->libusb_device,
+    find_interface_and_endpoints(tmplist->libusb_device,
+		   &tmplist->ptp_usb->interface,
 		   &tmplist->ptp_usb->inep,
 		   &tmplist->ptp_usb->inep_maxpacket,
 		   &tmplist->ptp_usb->outep,
@@ -1722,8 +1818,8 @@ static LIBMTP_error_number_t configure_usb_devices(mtpdevice_list_t *devicelist)
      * have not used LIBMTP_Release_Device on exit 
      */
     if ((ret = ptp_opensession(tmplist->params, 1)) == PTP_ERROR_IO) {
-      fprintf(stderr, "PTP_ERROR_IO: Trying again after resetting USB\n");
-      close_usb(tmplist->ptp_usb, tmplist->libusb_device->config->interface->altsetting->bInterfaceNumber);
+      fprintf(stderr, "PTP_ERROR_IO: Trying again after re-initializing USB interface\n");
+      close_usb(tmplist->ptp_usb);
       
       if(init_ptp_usb(tmplist->params, tmplist->ptp_usb, tmplist->libusb_device) <0) {
 	fprintf(stderr, "LIBMTP PANIC: Could not open session on device %d\n", current_device+1);
@@ -1746,16 +1842,7 @@ static LIBMTP_error_number_t configure_usb_devices(mtpdevice_list_t *devicelist)
 	      "(Return code %d)\n  Try to reset the device.\n",
 	      ret);
       usb_release_interface(tmplist->ptp_usb->handle,
-			    tmplist->libusb_device->config->interface->altsetting->bInterfaceNumber);
-      return LIBMTP_ERROR_CONNECTING;
-    }
-  
-    /* It is permissible to call this before opening the session */
-    if (ptp_getdeviceinfo(tmplist->params,
-			  &tmplist->params->deviceinfo) != PTP_RC_OK) {
-      fprintf(stderr, "LIBMTP PANIC: Could not get device info!\n");
-      usb_release_interface(tmplist->ptp_usb->handle,
-			    tmplist->libusb_device->config->interface->altsetting->bInterfaceNumber);
+			    (int) tmplist->ptp_usb->interface);
       return LIBMTP_ERROR_CONNECTING;
     }
 
@@ -1807,16 +1894,6 @@ LIBMTP_error_number_t find_usb_devices(mtpdevice_list_t **devlist)
     goto find_usb_devices_error_exit;
   }
   
-  /* Configure interface numbers */
-  {
-    mtpdevice_list_t *tmplist = mtp_device_list;
-
-    while (tmplist != NULL) {
-      tmplist->interface_number = tmplist->libusb_device->config->interface->altsetting->bInterfaceNumber;
-      tmplist = tmplist->next;
-    }
-  }
-  
   /* we're connected to all devices, return the list and OK */
   *devlist = mtp_device_list;
   return LIBMTP_ERROR_NONE;
@@ -1830,42 +1907,68 @@ LIBMTP_error_number_t find_usb_devices(mtpdevice_list_t **devlist)
   return ret;
 } 
 
-static void find_endpoints(struct usb_device *dev, int* inep, int* inep_maxpacket, int* outep, int *outep_maxpacket, int* intep)
+static void find_interface_and_endpoints(struct usb_device *dev, 
+					 uint8_t *interface,
+					 int* inep, 
+					 int* inep_maxpacket, 
+					 int* outep, 
+					 int *outep_maxpacket, 
+					 int* intep)
 {
-  int i,n;
-  struct usb_endpoint_descriptor *ep;
-  
-  ep = dev->config->interface->altsetting->endpoint;
-  n=dev->config->interface->altsetting->bNumEndpoints;
-  
-  for (i=0;i<n;i++) {
-    if (ep[i].bmAttributes==USB_ENDPOINT_TYPE_BULK)	{
-      if ((ep[i].bEndpointAddress&USB_ENDPOINT_DIR_MASK)==
-	  USB_ENDPOINT_DIR_MASK)
-	{
-	  *inep=ep[i].bEndpointAddress;
-	  *inep_maxpacket=ep[i].wMaxPacketSize;
+  int i;
+
+  // Loop over the device configurations
+  for (i = 0; i < dev->descriptor.bNumConfigurations; i++) {
+    uint8_t j;
+
+    for (j = 0; j < dev->config[i].bNumInterfaces; j++) {
+      uint8_t k;
+      uint8_t no_ep;
+      struct usb_endpoint_descriptor *ep;
+      
+      if (dev->descriptor.bNumConfigurations > 1 || dev->config[i].bNumInterfaces > 1) {
+	// OK This device has more than one interface, so we have to find out
+	// which one to use! 
+	// FIXME: Probe the interface.
+	// FIXME: Release modules attached to all other interfaces in Linux...?
+      }
+
+      *interface = dev->config[i].interface[j].altsetting->bInterfaceNumber;
+      ep = dev->config[i].interface[j].altsetting->endpoint;
+      no_ep = dev->config[i].interface[j].altsetting->bNumEndpoints;
+      
+      for (k = 0; k < no_ep; k++) {
+	if (ep[k].bmAttributes==USB_ENDPOINT_TYPE_BULK)	{
+	  if ((ep[k].bEndpointAddress&USB_ENDPOINT_DIR_MASK)==
+	      USB_ENDPOINT_DIR_MASK)
+	    {
+	      *inep=ep[k].bEndpointAddress;
+	      *inep_maxpacket=ep[k].wMaxPacketSize;
+	    }
+	  if ((ep[k].bEndpointAddress&USB_ENDPOINT_DIR_MASK)==0)
+	    {
+	      *outep=ep[k].bEndpointAddress;
+	      *outep_maxpacket=ep[k].wMaxPacketSize;
+	    }
+	} else if (ep[k].bmAttributes==USB_ENDPOINT_TYPE_INTERRUPT){
+	  if ((ep[k].bEndpointAddress&USB_ENDPOINT_DIR_MASK)==
+	      USB_ENDPOINT_DIR_MASK)
+	    {
+	      *intep=ep[k].bEndpointAddress;
+	    }
 	}
-      if ((ep[i].bEndpointAddress&USB_ENDPOINT_DIR_MASK)==0)
-	{
-	  *outep=ep[i].bEndpointAddress;
-	  *outep_maxpacket=ep[i].wMaxPacketSize;
-	}
-    } else if (ep[i].bmAttributes==USB_ENDPOINT_TYPE_INTERRUPT){
-      if ((ep[i].bEndpointAddress&USB_ENDPOINT_DIR_MASK)==
-	  USB_ENDPOINT_DIR_MASK)
-	{
-	  *intep=ep[i].bEndpointAddress;
-	}
+      }
+      // We assigned the endpoints so return here.
+      return;
     }
   }
 }
 
-void close_device (PTP_USB *ptp_usb, PTPParams *params, uint8_t interfaceNumber)
+void close_device (PTP_USB *ptp_usb, PTPParams *params)
 {
   if (ptp_closesession(params)!=PTP_RC_OK)
     fprintf(stderr,"ERROR: Could not close session!\n");
-  close_usb(ptp_usb, interfaceNumber);
+  close_usb(ptp_usb);
 }
 
 static int usb_clear_stall_feature(PTP_USB* ptp_usb, int ep)
@@ -1873,12 +1976,12 @@ static int usb_clear_stall_feature(PTP_USB* ptp_usb, int ep)
   
   return (usb_control_msg(ptp_usb->handle,
 			  USB_RECIP_ENDPOINT, USB_REQ_CLEAR_FEATURE, USB_FEATURE_HALT,
-			  ep, NULL, 0, 3000));
+			  ep, NULL, 0, USB_TIMEOUT));
 }
 
 static int usb_get_endpoint_status(PTP_USB* ptp_usb, int ep, uint16_t* status)
 {
   return (usb_control_msg(ptp_usb->handle,
 			  USB_DP_DTH|USB_RECIP_ENDPOINT, USB_REQ_GET_STATUS,
-			  USB_FEATURE_HALT, ep, (char *)status, 2, 3000));
+			  USB_FEATURE_HALT, ep, (char *)status, 2, USB_TIMEOUT));
 }

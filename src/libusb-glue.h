@@ -49,6 +49,8 @@
  * set to 0xFFFFFFFF. Compare to 
  * DEVICE_FLAG_BROKEN_MTPGETOBJECTPROPLIST which only signify
  * that it's broken when getting metadata for a SINGLE object.
+ * A typical way the implementation may be broken is that it 
+ * may not return a proper count of the objects.
  */
 #define DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL 0x00000001
 /**
@@ -98,14 +100,44 @@
  * filename extension will be done for files of "unknown" type.
  */
 #define DEVICE_FLAG_IRIVER_OGG_ALZHEIMER 0x00000010
+/**
+ * This flag indicates a limitation in the filenames a device
+ * can accept - they must be 7 bit (all chars <= 127/0x7F).
+ * It was found first on the Philips Shoqbox, and is a deviation
+ * from the PTP standard which mandates that any unicode chars
+ * may be used for filenames. I guess this is caused by a 7bit-only
+ * filesystem being used intrinsically on the device.
+ */
+#define DEVICE_FLAG_ONLY_7BIT_FILENAMES 0x00000020
+/**
+ * This flag indicates that the device will lock up if you
+ * try to get status of endpoints and/or release the interface
+ * when closing the device. This fixes problems with SanDisk
+ * Sansa devices especially. It may be a side-effect of a
+ * Windows behaviour of never releasing interfaces.
+ */
+#define DEVICE_FLAG_NO_RELEASE_INTERFACE 0x00000040
+/**
+ * This falg was introduced with the advent of Creative ZEN
+ * 8GB. The device sometimes return a broken PTP header
+ * like this: < 1502 0000 0200 01d1 02d1 01d2 >
+ * the latter 6 bytes (representing "code" and "transaction ID")
+ * contain junk. This is breaking the PTP/MTP spec but works
+ * on Windows anyway, probably because the Windows implementation
+ * does not check that these bytes are valid. To interoperate
+ * with devices like this, we need this flag to emulate the 
+ * Windows bug.
+ */
+#define DEVICE_FLAG_IGNORE_HEADER_ERRORS 0x00000080
 
 /**
  * Internal USB struct.
  */
 typedef struct _PTP_USB PTP_USB;
 struct _PTP_USB {
+  PTPParams *params;
   usb_dev_handle* handle;
-  int interface;
+  uint8_t interface;
   int inep;
   int inep_maxpacket;
   int outep;
@@ -125,14 +157,13 @@ struct mtpdevice_list_struct {
   struct usb_device *libusb_device;
   PTPParams *params;
   PTP_USB *ptp_usb;
-  uint8_t interface_number;
   struct mtpdevice_list_struct *next;
 };
 typedef struct mtpdevice_list_struct mtpdevice_list_t;
 
 int open_device (int busn, int devn, short force, PTP_USB *ptp_usb, PTPParams *params, struct usb_device **dev);
 void dump_usbinfo(PTP_USB *ptp_usb);
-void close_device (PTP_USB *ptp_usb, PTPParams *params, uint8_t interfaceNumber);
+void close_device (PTP_USB *ptp_usb, PTPParams *params);
 LIBMTP_error_number_t find_usb_devices(mtpdevice_list_t **devlist);
 void free_mtpdevice_list(mtpdevice_list_t *devlist);
 

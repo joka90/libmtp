@@ -28,8 +28,8 @@
 #ifndef LIBMTP_H_INCLUSION_GUARD
 #define LIBMTP_H_INCLUSION_GUARD
 
-#define LIBMTP_VERSION 0.2.1
-#define LIBMTP_VERSION_STRING "0.2.1"
+#define LIBMTP_VERSION 0.2.2
+#define LIBMTP_VERSION_STRING "0.2.2"
 
 /* This handles MSVC pecularities */
 #ifdef _MSC_VER
@@ -120,7 +120,8 @@ typedef enum {
   LIBMTP_ERROR_MEMORY_ALLOCATION,
   LIBMTP_ERROR_NO_DEVICE_ATTACHED,
   LIBMTP_ERROR_STORAGE_FULL,
-  LIBMTP_ERROR_CONNECTING
+  LIBMTP_ERROR_CONNECTING,
+  LIBMTP_ERROR_CANCELLED
 } LIBMTP_error_number_t;
 typedef struct LIBMTP_device_entry_struct LIBMTP_device_entry_t; /**< @see LIBMTP_device_entry_struct */
 typedef struct LIBMTP_error_struct LIBMTP_error_t; /**< @see LIBMTP_error_struct */
@@ -176,8 +177,10 @@ struct LIBMTP_error_struct {
  * Main MTP device object struct
  */
 struct LIBMTP_mtpdevice_struct {
-  /** Interface number of this device */
-  uint8_t interface_number;
+  /**
+   * Object bitsize, typically 32 or 64.
+   */
+  uint8_t object_bitsize;
   /**
    * Parameters for this device, must be cast into
    * \c (PTPParams*) before internal use.
