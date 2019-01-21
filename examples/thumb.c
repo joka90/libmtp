@@ -20,6 +20,7 @@
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
  */
+#include "config.h"
 #include "common.h"
 #include "string.h"
 #include <fcntl.h>
@@ -28,7 +29,9 @@
 #include <unistd.h>
 #include <limits.h>
 #include <sys/types.h>
+#ifdef HAVE_SYS_UIO_H
 #include <sys/uio.h>
+#endif
 #include <sys/stat.h>
 
 static void usage(void) {

@@ -1,3 +1,281 @@
+2009-09-12  Linus Walleij <triad@df.lth.se>
+
+	* configure.ac: bump version to libmtp 1.0.1 and release!
+	* src/Makefile.am: bump soversion to libmtp.so.8.3.1
+
+2009-09-11  Linus Walleij <triad@df.lth.se>
+
+	* src/music-players.h: tag all SONY NWZ walkmen with
+	  DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST.
+
+2009-08-27  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: modernize the album retrieveal functions
+	  so they work just as nicely as the track/playlist etc
+	  functions. Triggered by Nyalls excellent bug report that
+	  showed how libmtp tried to get "composer" info for an
+	  album eventhough the device didn't support it.
+
+2009-08-27  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: bugfixes again...
+
+2009-08-25  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: fix a bug where the metadata was cached
+	  twice, thx to Marcus for the patch!
+
+2009-08-23  Linus Walleij <triad@df.lth.se>
+
+	* src/ptp.c: sync to upstream
+	* src/ptp.h: dito.
+	* src/libmtp.c: patch from Thomas Schweitzer to not use
+	  C++ reserved words like "private" and "new", this was
+	  changed to "priv" and "newlist" making C++ happy.
+	* src/libusb-glue.h: inclusion guard, export functions to
+	  C++ (whoever wants to do that...)
+	* src/libusb-glue.c: define USB_CLASS_PTP unless defined,
+	  out-commented code to detect all PTP devices as MTP
+	  devices as well.
+
+2009-08-12  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.c: patch from Simon Berg to detect PTP
+	  interface descriptors.
+	* src/ptp.c: sync to upstream with correct MTP interface
+	  detection in accordance with MTP spec.
+	* src/ptp.h: dito.
+
+2009-08-02  Linus Walleij <triad@df.lth.se>
+
+	* configure.ac: tag for libmtp 1.0.0!
+	* src/Makefile.am: bump to compatible API/ABI
+	  result = libmtp.so.8.3.0
+	* src/libmtp.c: missing flag fix from Marcus.
+
+2009-07-24  Linus Walleij <triad@df.lth.se>
+
+	* src/device-flags.h: add a flag for unknown FLAC type.
+	* src/music-players.h: tag the Cowon iAudio S9 with this.
+	* src/libmtp.c: implement unknown FLAC type.
+
+2009-07-24  Linus Walleij <triad@df.lth.se>
+
+	* src/music-players.h: a number of new devices.
+	* src/ptp.c: sync to upstream.
+	* src/ptp.h: sync to upstream.
+	* src/ptp-pack.c: sync to upstream.
+
+2009-06-24  Linus Walleij <triad@df.lth.se>
+
+	* src/music-players.h: tag most all Samsung devices with
+	  the UNLOAD_DRIVER flag. Broken GET_ALL info in all
+	  Creative devices.
+
+2009-06-20  Linus Walleij <triad@df.lth.se>
+
+	* examples/pathutils.c: detect VCF files too.
+
+2009-06-15  Marcus Meissner <meissner@suse.de>
+
+	* configure.ac: use the AC_SYS_LARGEFILE macro instead
+	  of the ugly largefile hacks.
+	* src/libmtp.c: fix use of largefile back to the simple
+	  functions instead.
+	* examples/albumart.c: dito.
+	* examples/sendfile.c: dito.
+	* examples/sendtr.c: dito.
+	* examples/thumb.c: dito.
+
+2009-06-15  Linus Walleij <triad@df.lth.se>
+
+	* configure.ac: some buildsystem updates.
+	* INSTALL: some doc updates.
+
+2009-06-15  Marcus Meissner <meissner@suse.de>
+
+	* src/libmtp.c: synced to new libgphoto2 code.
+	* src/device-flags.h: dito.
+	* src/ptp.h: sync to upstream.
+	* src/ptp.c: dito.
+	* src/ptp-pack.c: dito.
+
+	The handles, the PTPObjectInfo and the MTP proplists
+	are now consolidated into "PTPObject"s.
+
+	This and abstraction and the resulting helper functions
+	allow implementation of easier dynamic operations like
+	I need for libgphoto2.
+
+	Some corner stones:
+
+	- PTPParams now contains the device flags itself.
+	  (from device-flags.h) This is needed due to
+	  ptp_object_want() needing to decide whether it can call
+	  GetObjPropList, and it makes it cleaner.
+
+	  So the ptp-bugs and device-flags handling are unified.
+
+	- PTPObjects are sorted by object handle. This allows binary
+	  search by handle.
+
+	- New generic helper functions.
+
+	  * uint16_t ptp_object_find (PTPParams *params,
+	    uint32_t handle, PTPObject **retob)
+	    binary searches the handle in the object list and returns
+	    a pointer to the object.
+
+	  * uint16_t ptp_object_find_or_insert (PTPParams *params,
+	    uint32_t handle, PTPObject **retob)
+	    binary searches the handle in the object list, inserts it
+	    if not there yet, and returns a pointer to the object.
+
+	  * uint16_t ptp_object_want (PTPParams *params, uint32_t handle,
+	    int want, PTPObject **retob)
+	    The most magic function, which does the "on demand" loading
+	    of objectinfos, mtp proplists (and more).
+	    want is a flag mask of PTPOBJECT_*_LOADED
+	    PTPOBJECT_OBJECTINFO_LOADED   clear
+	    PTPOBJECT_CANONFLAGS_LOADED   (special canon flags)
+	    PTPOBJECT_MTPPROPLIST_LOADED  mtp properties for this object
+	                                  loaded
+	    PTPOBJECT_DIRECTORY_LOADED    (only used by libgphoto2 currently)
+	    PTPOBJECT_PARENTOBJECT_LOADED this and storageid are
+	                                  interesting for directory based
+	                                  lookups
+	    PTPOBJECT_STORAGEID_LOADED    and can be filled out by directory
+	                                  loading
+
+	  * void ptp_objects_sort (PTPParams *params);
+	    Sort the objects list if you did any modification of your own
+	    on it and the order of object handles might not be linear
+	    anymore.
+
+	- Multiple object information loading strategies are possible.
+	  libmtp uses getobjecthandles() /getobjectinfo() and
+	  getobjectproplist() loading strategies for initial setup. This
+	  stays of course, it will just fill out the PTPObject array.
+
+	  libgphoto2 now uses a per-directory getobjecthandles() /
+	  getobjectinfo() loading approach, and I will readd the
+	  getobjectproplist() approach.
+
+	  It is open what you chose to use here. For libmtp the "load all
+	  handles at startup" is good, dynamic loading is better for
+	  libgphoto2.
+
+	  Only rule is: The objectlist must be in order of objecthandles!
+	  (ptp_object_sort()).
+
+2009-06-02  Linus Walleij <triad@df.lth.se>
+
+	* examples/hotplug.c: change the udev match rule from
+	  ATTR{dev}!="?*" to ENV{MAJOR}!="?*" at the suggestion of
+	  Alan Jenkins, this should be faster.
+	* src/libusb-glue.c: include config.h (Marcus Meissner found
+	  this is needed when you're not using iconv().)
+
+2009-05-09  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: include <config.h> for iconv() compatibility.
+	* src/unicode.c: dito. NOTE: this file needs fixing to work
+	  without iconv!
+	* src/ptp.h: sync to upstream and get all the embedded support
+	  for FREE!
+	* src/ptp.c: dito.
+	* src/ptp-pack.c: dito.
+
+2009-05-06  Linus Walleij <triad@df.lth.se>
+
+	* src/ptp.h: sync to upstream.
+	* src/ptp.c: dito.
+	* src/ptp-pack.c: dito.
+
+2009-05-06  Linus Walleij <triad@df.lth.se>
+
+	A host of Windows fixes from
+	Carlo Bramini <carlo_bramini@users.sourcefore.net>
+	With this patch everything works fine with cygwin and
+	Debian 5.0. Unfortunately, with MSys the "make install"
+	still fails at the very last actions. It happens that
+	everything is re-linked (strange, but not a big problem)
+	and for some unknown reason it loops forever when executing
+	"examples/hotplug > libmtp.usermap". But hopefully the
+	simple "make" completes without errors.
+
+	* configure.ac:
+	  * iconv is now detected with autotools, this makes libmtp
+	    linkable on cygwin too (previously it was not).
+	  * the presence of Microsoft LIB.EXE is checked; if it is
+	    absent then the MSVC libraries won't be generated.
+	  * Added checking for some include files not available on
+	    Windows: arpa/inet.h, byteswap.h, sys/uio.h.
+	  * Check for presence of mkstemp: a replacement has been
+	    written for Windows.
+	* examples/Makefile.am: the creation of the links failed:
+	  I added source path and $(EXEEXT) extension for executables.
+	  This is tested and working with Mingw+MSys, Cygwin, Debian 5.0.
+	* examples/albumart.c: include sys/uio.h only if it's available.
+	* examples/trexist.c: u_int32_t does not exists, into almost all
+	  other parts libmtp is using uint32_t so I fixed it in that
+	  manner. (Same for u_int64_t/uint64_t).
+	* examples/getfile.c: dito.
+	* examples/pathutils.c: dito, plus rindex() does not exist under
+	  Windows, we must user strrchr() instead.
+	* examples/pathutils.h: fixes for prototypes changes made into
+	  examples/pathutils.c
+	* examples/thumb.c: include sys/uio.h only if it's available.
+	* src/Makefile.am:
+	  * Several fixes because the check on the presence of LIB.EXE
+	    libmtp.sym is now prefixed by $(srcdir), this allows to
+	    configure libmtp outside the source tree in Windows too.
+	  * Libraries are put into LIBADD instead of LDFLAGS, this is the
+	    right place.
+	  * Previously the linker crashed because there was -ws2_32
+	    instead of -lws2_32.
+	* src/playlist-spl.c:
+	  * include sys/uio.h only if it's available.
+	  * include replacement for mkstemp() function.
+
+2009-05-03  Richard Low <richard@wentnet.com>
+
+	* src/libmtp.c: add external property types just like file
+	  types so any property can be retrieved/set. Add function
+	  LIBMTP_Is_Property_Supported to determine if a property is
+	  supported for a given object type. Add function
+	  LIBMTP_Get_Allowed_Property_Values to get alowed range/enum
+	  of a property value. Make
+	  LIBMTP_Get_Representative_Sample_Format get the size parameter
+	  to allow us to determine the maximum size for a representative
+	  sample.
+	* src/libmtp.h.in: ditto
+	* src/libusb-glue.c: update to check the handler function return
+	  value so the handler can return PTP_ERROR_CANCEL to cancel the
+	  transfer.
+
+2009-05-02 Richard Low <richard@wentnet.com>
+
+	* src/ptp-pack.c: add a NULL check
+
+2009-04-18  Richard Low <richard@wentnet.com>
+
+	* src/ptp-pack.c: add terminating NULL character
+
+2009-04-11  Richard Low <richard@wentnet.com>
+
+	* src/libusb-glue.c: Make get_playlist_extension return type
+	  const char *
+	* src/libusb-glue.h: ditto
+	* src/libusb-glue.c: In probe_device_descriptor, check to see if
+	  dev->config is NULL before going round the first loop
+	* src/libmtp.c: Add LIBMTP_Get_File_To_Handler,
+	  LIBMTP_Send_File_From_Handler, LIBMTP_Get_Track_To_Handler,
+	  LIBMTP_Send_Track_From_Handler functions to get/send files/tracks
+	  from/to handler functions. Add modificationdate to file and track
+	  structs. Add LIBMTP_FILETYPE_ALBUM and LIBMTP_FILETYPE_PLAYLIST
+	  filetypes.
+
 2009-03-17  Linus Walleij <triad@df.lth.se>
 
 	* src/device-flags.h: discovered a new device that cannot even
@@ -74,7 +352,7 @@
 
 	* src/Makefile.am: patch from Rafael Laboissiere removing a
 	  build artifact in distclean.
-	
+
 2009-01-02  Linus Walleij <triad@df.lth.se>
 
 	* examples/connect.c: usage patch from Riley Patterson.

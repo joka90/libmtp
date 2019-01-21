@@ -17,40 +17,45 @@ EXTRA_DIST=libmtp.h.in libmtp.sym ptp-pack.c
 #  - CURRENT (Major):  Increment if the interface has changes. AGE is always
 #                      *changed* at the same time.
 #  - AGE (Micro):      Increment if any interfaces have been added; set to 0
-#		         if any interfaces have been removed. Removal has 
+#		         if any interfaces have been removed. Removal has
 #                      precedence over adding, so set to 0 if both happened.
 #                      It denotes upward compatibility.
-#  - REVISION (Minor): Increment any time the source changes; set to 
+#  - REVISION (Minor): Increment any time the source changes; set to
 #			 0 if you incremented CURRENT.
 #
 #  To summarize. Any interface *change* increment CURRENT. If that interface
-#  change does not break upward compatibility (ie it is an addition), 
-#  increment AGE, Otherwise AGE is reset to 0. If CURRENT has changed, 
+#  change does not break upward compatibility (ie it is an addition),
+#  increment AGE, Otherwise AGE is reset to 0. If CURRENT has changed,
 #  REVISION is set to 0, otherwise REVISION is incremented.
 # ---------------------------------------------------------------------------
-CURRENT=10
-AGE=2
-REVISION=2
+CURRENT=11
+AGE=3
+REVISION=1
 SOVERSION=$(CURRENT):$(REVISION):$(AGE)
+LT_CURRENT_MINUS_AGE=`expr $(CURRENT) - $(AGE)`
 
 if COMPILE_MINGW32
+W32_LIBS=-lws2_32
+W32_LDFLAGS=-export-dynamic
+if MS_LIB_EXE
 noinst_DATA=libmtp.lib
-W32LF=-export-dynamic -liconv -ws2_32
-libmtp.def: libmtp.sym
+libmtp.def: $(srcdir)/libmtp.sym
 	echo "LIBRARY \"@PACKAGE@\"" > libmtp.def
 	echo "DESCRIPTION \"Media Transfer Protocol (MTP) library\"" >> libmtp.def
 	echo "VERSION @VERSION@" >> libmtp.def
 	echo >> libmtp.def
 	echo "EXPORTS" >> libmtp.def
-	cat libmtp.sym >> libmtp.def
+	cat $< >> libmtp.def
 libmtp.lib: libmtp.la libmtp.def
 	lib -name:libmtp-$(LT_CURRENT_MINUS_AGE).dll -def:libmtp.def -out:$@
 install-data-local: libmtp.lib libmtp.def
 	$(INSTALL) libmtp.def $(DESTDIR)$(libdir)
 	$(INSTALL) libmtp.lib $(DESTDIR)$(libdir)
 endif
+endif
 
-libmtp_la_LDFLAGS=@LDFLAGS@ -no-undefined -export-symbols libmtp.sym -version-info $(SOVERSION) $(W32LF)
-libmtp_la_DEPENDENCIES=libmtp.sym
+libmtp_la_LDFLAGS=@LDFLAGS@ -no-undefined -export-symbols $(srcdir)/libmtp.sym -version-info $(SOVERSION) $(W32_LDFLAGS)
+libmtp_la_LIBADD=$(W32_LIBS) $(LTLIBICONV)
+libmtp_la_DEPENDENCIES=$(srcdir)/libmtp.sym
 
 DISTCLEANFILES = _stdint.h
