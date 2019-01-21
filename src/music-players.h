@@ -62,8 +62,10 @@
   // Reported by Darel on the XNJB forums
   { "Creative", 0x041e, "ZEN V Plus", 0x4152, DEVICE_FLAG_NONE },
   { "Creative", 0x041e, "ZEN Vision W", 0x4153, DEVICE_FLAG_NONE },
+  // Reported by Mat Hunt <mat@hyperkahler.co.uk>
+  { "Creative", 0x041e, "ZEN 8GB", 0x4155, DEVICE_FLAG_NONE },
   // Reported by Paul Kurczaba <paul@kurczaba.com>
-  { "Creative", 0x041e, "ZEN 8GB", 0x4157, DEVICE_FLAG_IGNORE_HEADER_ERRORS },
+  { "Creative", 0x041e, "ZEN 8GB 2nd id", 0x4157, DEVICE_FLAG_IGNORE_HEADER_ERRORS },
   // Reported by Ringofan <mcroman@users.sourceforge.net>
   { "Creative", 0x041e, "ZEN V 2GB", 0x4158, DEVICE_FLAG_NONE },
 
@@ -99,7 +101,8 @@
   { "Samsung", 0x04e8, "YP-F2J", 0x5057, DEVICE_FLAG_UNLOAD_DRIVER },
   // Reported by Patrick <skibler@gmail.com>
   { "Samsung", 0x04e8, "YP-K5", 0x505a, DEVICE_FLAG_NO_ZERO_READS },
-  // From dev.local@gmail.com - 0x4e8/0x507c is the UMS mode, don't add this.
+  // From dev.local@gmail.com - 0x4e8/0x507c is the UMS mode, apparently
+  // do not add that device.
   // From m.eik michalke
   { "Samsung", 0x04e8, "YP-U3", 0x507d, DEVICE_FLAG_NONE },
   // Reported by Matthew Wilcox <matthew@wil.cx>
@@ -109,10 +112,12 @@
   // From XNJB user
   { "Samsung", 0x04e8, "YP-P2", 0x5083, DEVICE_FLAG_NO_ZERO_READS },
   // From Paul Clinch
-  { "Samsung", 0x04e8, "YP-T10", 0x508a, DEVICE_FLAG_NONE },
+  { "Samsung", 0x04e8, "YP-T10", 0x508a, DEVICE_FLAG_OGG_IS_UNKNOWN },
   // From a rouge .INF file,
-  // this device ID seems to have been recycled for the Samsung SGH-A707 Cingular cellphone
-  { "Samsung", 0x04e8, "YH-999 Portable Media Center / SGH-A707", 0x5a0f, DEVICE_FLAG_NONE },
+  // this device ID seems to have been recycled for:
+  // the Samsung SGH-A707 Cingular cellphone
+  // the Samsung L760-V cellphone
+  { "Samsung", 0x04e8, "YH-999 Portable Media Center/SGH-A707/SGH-L760V", 0x5a0f, DEVICE_FLAG_NONE },
   // From Lionel Bouton
   { "Samsung", 0x04e8, "X830 Mobile Phone", 0x6702, DEVICE_FLAG_NONE },
   // From James <jamestech@gmail.com>
@@ -153,6 +158,8 @@
   { "Philips", 0x0471, "HDD6320", 0x01eb, DEVICE_FLAG_NONE },
   // From Detlef Meier <dm@emlix.com>
   { "Philips", 0x0471, "SA6014/SA6015/SA6024/SA6025/SA6044/SA6045", 0x084e, DEVICE_FLAG_UNLOAD_DRIVER },
+  // From anonymous Sourceforge user SA5145/02
+  { "Philips", 0x0471, "SA5145", 0x0857, DEVICE_FLAG_UNLOAD_DRIVER },
   // from XNJB user
   { "Philips", 0x0471, "PSA235", 0x7e01, DEVICE_FLAG_NONE },
 
@@ -181,6 +188,10 @@
     DEVICE_FLAG_NO_RELEASE_INTERFACE },
   // Reported by XNJB user
   { "SanDisk", 0x0781, "Sansa e280", 0x7421, 
+    DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL |
+    DEVICE_FLAG_NO_RELEASE_INTERFACE },
+  // Reported by XNJB user
+  { "SanDisk", 0x0781, "Sansa e280 v2", 0x7422, 
     DEVICE_FLAG_UNLOAD_DRIVER | DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL |
     DEVICE_FLAG_NO_RELEASE_INTERFACE },
   // Reported by XNJB user
@@ -300,6 +311,8 @@
   { "Toshiba", 0x0930, "Gigabeat V30", 0x0014, DEVICE_FLAG_NONE },
   // Reported by Michael Davis <slithy@yahoo.com>
   { "Toshiba", 0x0930, "Gigabeat U", 0x0016, DEVICE_FLAG_NONE },
+  // Reported by Rolf <japan (at) dl3lar.de>
+  { "Toshiba", 0x0930, "Gigabeat T", 0x0019, DEVICE_FLAG_NONE },
   
   /*
    * Archos
@@ -317,6 +330,8 @@
   { "Archos", 0x0e79, "504 (MTP mode)", 0x1307, DEVICE_FLAG_UNLOAD_DRIVER },
   // Reported by Kay McCormick <kaym@modsystems.com>
   { "Archos", 0x0e79, "704 mobile dvr", 0x130d, DEVICE_FLAG_UNLOAD_DRIVER },
+  // Reported by Joe Rabinoff
+  { "Archos", 0x0e79, "605 (MTP mode)", 0x1313, DEVICE_FLAG_UNLOAD_DRIVER },
 
   /*
    * Dunlop (OEM of EGOMAN ltd?) reported by Nanomad
@@ -427,6 +442,8 @@
    * Insignia, dual-mode.
    */
   { "Insignia", 0x19ff, "NS-DV45", 0x0303, DEVICE_FLAG_UNLOAD_DRIVER },
+  // Reported by Rajan Bella <rajanbella@yahoo.com>
+  { "Insignia", 0x19ff, "Sport Player", 0x0307, DEVICE_FLAG_UNLOAD_DRIVER },
   // Reported by "brad" (anonymous, sourceforge)
   { "Insignia", 0x19ff, "Pilot 4GB", 0x0309, DEVICE_FLAG_UNLOAD_DRIVER },
 
@@ -438,10 +455,16 @@
 
   /*
    * Sony
+   * It could be that these PIDs are one-per hundred series, so
+   * NWZ-A8xx is 0325, NWZ-S5xx is 0x326 etc. We need more devices
+   * reported to see a pattern here.
    */
+  // Reported by Alessandro Radaelli >alessandro.radaelli@aruba.it>
+  { "Sony", 0x054c, "Walkman NWZ-A815", 0x0325, DEVICE_FLAG_UNLOAD_DRIVER },
+  // Reported by anonymous Sourceforge user.
+  { "Sony", 0x054c, "Walkman NWZ-S516", 0x0326, DEVICE_FLAG_UNLOAD_DRIVER },
   // Reported by Endre Oma <endre.88.oma@gmail.com>
-  // (possibly this is for the A-series too)
-  { "Sony", 0x054c, "Walkman S-series", 0x0327, DEVICE_FLAG_UNLOAD_DRIVER },
+  { "Sony", 0x054c, "Walkman NWZ-S615F/NWZ-S618F", 0x0327, DEVICE_FLAG_UNLOAD_DRIVER },
 
   /*
    * SonyEricsson
@@ -461,6 +484,12 @@
   { "Motorola", 0x22b8, "A1200", 0x60ca, DEVICE_FLAG_BROKEN_SET_OBJECT_PROPLIST },
   // Reported by anonymous user
   { "Motorola", 0x22b8, "RAZR2 V8", 0x6415, DEVICE_FLAG_BROKEN_SET_OBJECT_PROPLIST },
+
+  /*
+   * Media Keg
+   */
+  // Reported by Rajan Bella <rajanbella@yahoo.com>
+  { "Kenwood", 0x0b28, "Media Keg HD10GB7 Sport Player", 0x100c, DEVICE_FLAG_UNLOAD_DRIVER},
 
   /*
    * Other strange stuff.

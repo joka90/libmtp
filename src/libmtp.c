@@ -2443,6 +2443,7 @@ int LIBMTP_Get_Supported_Filetypes(LIBMTP_mtpdevice_t *device, uint16_t ** const
 				  uint16_t * const length)
 {
   PTPParams *params = (PTPParams *) device->params;
+  PTP_USB *ptp_usb = (PTP_USB*) device->usbinfo;
   uint16_t *localtypes;
   uint16_t localtypelen;
   uint32_t i;
@@ -2458,6 +2459,12 @@ int LIBMTP_Get_Supported_Filetypes(LIBMTP_mtpdevice_t *device, uint16_t ** const
       localtypelen++;
     }
   }
+  // The forgotten Ogg support on YP-10 and others...
+  if (ptp_usb->device_flags & DEVICE_FLAG_OGG_IS_UNKNOWN) {
+    localtypes = (uint16_t *) realloc(localtypes, (params->deviceinfo.ImageFormats_len+1) * sizeof(uint16_t));
+    localtypes[localtypelen] = LIBMTP_FILETYPE_OGG;
+    localtypelen++;
+  }
 
   *filetypes = localtypes;
   *length = localtypelen;
@@ -2466,12 +2473,21 @@ int LIBMTP_Get_Supported_Filetypes(LIBMTP_mtpdevice_t *device, uint16_t ** const
 }
 
 /**
- * This function retrieves all the storage id's of a device and there
- * properties. Then creates a linked list and puts the list head into 
+ * This function updates all the storage id's of a device and their
+ * properties, then creates a linked list and puts the list head into 
  * the device struct. It also optionally sorts this list. If you want
  * to display storage information in your application you should call
- * this function, then dereference the device struct 
- * (<code>device->storage</code>) to get out information on the storage.
+ * this function, then dereference the device struct  
+ * (<code>device-&gt;storage</code>) to get out information on the storage.
+ *
+ * You need to call this everytime you want to update the
+ * <code>device-&gt;storage</code> list, for example anytime you need
+ * to check available storage somewhere.
+ *
+ * <b>WARNING:</b> since this list is dynamically updated, do not
+ * reference its fields in external applications by pointer! E.g
+ * do not put a reference to any <code>char *</code> field. instead
+ * <code>strncpy()</code> it!
  *
  * @param device a pointer to the device to get the filetype capabilities for.
  * @param sortby an integer that determines the sorting of the storage list. 
@@ -3312,7 +3328,9 @@ LIBMTP_track_t *LIBMTP_Get_Tracklisting_With_Callback(LIBMTP_mtpdevice_t *device
 	 oi->ObjectFormat != PTP_OFC_MTP_MP4 &&
 	 oi->ObjectFormat != PTP_OFC_MTP_UndefinedAudio &&
 	 // This row lets through undefined files for examination since they may be forgotten OGG files.
-	 (oi->ObjectFormat != PTP_OFC_Undefined || !(ptp_usb->device_flags & DEVICE_FLAG_IRIVER_OGG_ALZHEIMER))
+	 (oi->ObjectFormat != PTP_OFC_Undefined || 
+	  !(ptp_usb->device_flags & DEVICE_FLAG_IRIVER_OGG_ALZHEIMER) ||
+	  !(ptp_usb->device_flags & DEVICE_FLAG_OGG_IS_UNKNOWN))
 	 ) {
       // printf("Not a music track (format: %d), skipping...\n",oi.ObjectFormat);
       continue;
@@ -3344,7 +3362,8 @@ LIBMTP_track_t *LIBMTP_Get_Tracklisting_With_Callback(LIBMTP_mtpdevice_t *device
      * for these bugged devices only.
      */
     if (track->filetype == LIBMTP_FILETYPE_UNKNOWN &&
-	ptp_usb->device_flags & DEVICE_FLAG_IRIVER_OGG_ALZHEIMER) {
+	(ptp_usb->device_flags & DEVICE_FLAG_IRIVER_OGG_ALZHEIMER ||
+	 ptp_usb->device_flags & DEVICE_FLAG_OGG_IS_UNKNOWN)) {
       // Repair forgotten OGG filetype
       char *ptype;
       
@@ -3991,6 +4010,13 @@ int LIBMTP_Send_File_From_File_Descriptor(LIBMTP_mtpdevice_t *device,
 		) {
       localph = device->default_text_folder;
     }
+  }
+
+  // Here we wire the type to unknown on bugged, but
+  // Ogg-supportive devices.
+  if (ptp_usb->device_flags & DEVICE_FLAG_OGG_IS_UNKNOWN &&
+      of == PTP_OFC_MTP_OGG) {
+    of = PTP_OFC_Undefined;
   }
 
   if (ptp_operation_issupported(params,PTP_OC_MTP_SendObjectPropList)) {
@@ -5125,6 +5151,15 @@ static int create_new_abstract_list(LIBMTP_mtpdevice_t *device,
 	    prop->propval.str = strdup(name);
 	  }
 	  break;
+	case PTP_OPC_AlbumArtist:
+	  if (artist != NULL) {
+	    prop = ptp_get_new_object_prop_entry(&props,&nrofprops);
+	    prop->ObjectHandle = *newid;
+	    prop->property = PTP_OPC_AlbumArtist;
+	    prop->datatype = PTP_DTC_STR;
+	    prop->propval.str = strdup(artist);
+	  }
+	  break;
 	case PTP_OPC_Artist:
 	  if (artist != NULL) {
 	    prop = ptp_get_new_object_prop_entry(&props,&nrofprops);
@@ -5225,6 +5260,15 @@ static int create_new_abstract_list(LIBMTP_mtpdevice_t *device,
     // Update artist
     // FIXME: check if supported
     if (artist != NULL) {
+      ret = set_object_string(device, *newid, PTP_OPC_AlbumArtist, artist);
+      if (ret != 0) {
+	add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "create_new_abstract_list(): could not set entity album artist.");
+	return -1;
+      }
+    }
+    // Update artist
+    // FIXME: check if supported
+    if (artist != NULL) {
       ret = set_object_string(device, *newid, PTP_OPC_Artist, artist);
       if (ret != 0) {
 	add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "create_new_abstract_list(): could not set entity artist.");
@@ -5322,10 +5366,19 @@ static int update_abstract_list(LIBMTP_mtpdevice_t *device,
 	  if (name != NULL)
 	    prop->propval.str = strdup(name);
 	  break;
+	case PTP_OPC_AlbumArtist:
+	  if (artist != NULL) {
+	    prop = ptp_get_new_object_prop_entry(&props, &nrofprops);
+	    prop->ObjectHandle = objecthandle;
+	    prop->property = PTP_OPC_AlbumArtist;
+	    prop->datatype = PTP_DTC_STR;
+	    prop->propval.str = strdup(artist);
+	  }
+	  break;
 	case PTP_OPC_Artist:
 	  if (artist != NULL) {
 	    prop = ptp_get_new_object_prop_entry(&props, &nrofprops);
-	    prop->ObjectHandle = objecthandle;      
+	    prop->ObjectHandle = objecthandle;
 	    prop->property = PTP_OPC_Artist;
 	    prop->datatype = PTP_DTC_STR;
 	    prop->propval.str = strdup(artist);
@@ -5379,6 +5432,14 @@ static int update_abstract_list(LIBMTP_mtpdevice_t *device,
 	if (ret != 0) {
 	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "update_abstract_list(): "
 				  "could not set title.");
+	}
+	break;
+      case PTP_OPC_AlbumArtist:
+	// Update album artist
+	ret = set_object_string(device, objecthandle, PTP_OPC_AlbumArtist, artist);
+	if (ret != 0) {
+	  add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "update_abstract_list(): "
+				  "could not set album artist name.");
 	}
 	break;
       case PTP_OPC_Artist:
@@ -5590,7 +5651,10 @@ LIBMTP_album_t *LIBMTP_Get_Album_List(LIBMTP_mtpdevice_t *device)
     alb = LIBMTP_new_album_t();
     // Get metadata for it.
     alb->name = get_string_from_object(device, params->handles.Handler[i], PTP_OPC_Name);
-    alb->artist = get_string_from_object(device, params->handles.Handler[i], PTP_OPC_Artist);
+    alb->artist = get_string_from_object(device, params->handles.Handler[i], PTP_OPC_AlbumArtist);
+    if (alb->artist == NULL) {
+      alb->artist = get_string_from_object(device, params->handles.Handler[i], PTP_OPC_Artist);
+    }
     alb->genre = get_string_from_object(device, params->handles.Handler[i], PTP_OPC_Genre);
     alb->album_id = params->handles.Handler[i];
     
@@ -5652,7 +5716,10 @@ LIBMTP_album_t *LIBMTP_Get_Album(LIBMTP_mtpdevice_t *device, uint32_t const albi
     alb = LIBMTP_new_album_t();
     alb->album_id = params->handles.Handler[i];
     alb->name = get_string_from_object(device, params->handles.Handler[i], PTP_OPC_Name);
-    alb->artist = get_string_from_object(device, params->handles.Handler[i], PTP_OPC_Artist);
+    alb->artist = get_string_from_object(device, params->handles.Handler[i], PTP_OPC_AlbumArtist);
+    if (alb->artist == NULL) {
+      alb->artist = get_string_from_object(device, params->handles.Handler[i], PTP_OPC_Artist);
+    }
     alb->genre = get_string_from_object(device, params->handles.Handler[i], PTP_OPC_Genre);
     ret = ptp_mtp_getobjectreferences(params, alb->album_id, &alb->tracks, &alb->no_tracks);
     if (ret != PTP_RC_OK) {
