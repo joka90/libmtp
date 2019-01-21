@@ -1,3 +1,59 @@
+2007-03-26  Linus Walleij <triad@df.lth.se>
+
+	* configure.ac: bump version to 0.1.5, release 0.1.5!
+	* src/Makefile.am: bump lib interface revision to libmtp.so.5.2.1,
+	  backwards compatible to libmtp.so.5.
+
+2007-03-24  Richard Low <richard@wentnet.com>
+
+	* src/libusb-glue.c: fixed bug in zero read code
+
+2007-03-23  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: refactored MTP property list handling code to make
+	  things simple. Removed the flag for MTP enhanced: there are devices
+	  that will not work without MTP enhanced (for example the Samsung 
+	  YP-K5 will only support setting object property lists, not 
+	  individual object properties, leaving out parts of the MTP basic 
+	  subset), thus we are allowed to reverse-engineer and implement this 
+	  for interoperability. I also made the output from 
+	  LIBMTP_Dump_Device_Info() considerably more verbose, plotting out 
+	  the ranges and possible enumerated values of all object properties.
+	  For example you can see that the secret values associated with 
+	  Audible.com property 0xda01 is an enumerated value that can be 
+	  2, 3 or 4 (etc).
+
+2007-03-22  Richard Low <richard@wentnet.com>
+
+	* src/ptp.c: PTP_OC_MTP_SetObjPropList implementation
+	* src/ptp.h: ditto
+	* src/libmtp.c: Use PTP_OC_MTP_SetObjPropList when updating track
+	  metadata.
+
+2007-03-18  Richard Low <richard@wentnet.com>
+
+	* src/libusb-glue.c: new devices. Some of the Samsung players may
+	  need DEVICE_FLAG_NO_ZERO_READS to be set - I only know the YP-K5
+	  needs it.
+
+2007-03-16  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.h: introducing yet another device flag for the
+	  irivers bugged firmwares, this is for the Alzheimer disease that
+	  cause irivers to forget that OGG files are OGG files.
+	* src/libmtp.c: dito.
+	* src/libusb-glue.c: introduce this flag for all iriver devices.
+	* examples/pathutils.c: found a (small) bug.
+
+2007-03-12  Linus Walleij <triad@df.lth.se>
+
+	* Makefile.am: cleanup patch from Rafael Laboissiere.
+	* src/libusb-glue.c: refactored device detection code to 
+	  immediately test if the device is in the known devices list if it 
+	  does not feature a MTP device descriptor. This fixes the problem 
+	  of not being able to mix devices with proper descriptors and 
+	  non-detected devices.
+
 2007-03-07  Linus Walleij <triad@df.lth.se>
 
 	* src/libusb-glue.c: remove libgphoto2 functions that we
