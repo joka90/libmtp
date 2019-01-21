@@ -21,9 +21,14 @@
  */
 #include "common.h"
 #include "string.h"
-#include <sys/stat.h>
+#include <stdlib.h>
+#include <limits.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/uio.h>
 
 static void usage(void) {
   printf("Usage: albumart -i <fileid/trackid> -n <albumname> <imagefile>\n");
@@ -97,7 +102,7 @@ int main (int argc, char **argv) {
   imagedata = malloc(filesize * sizeof(uint8_t));
 
 #ifdef __WIN32__
-  if ( (fd = open(path, O_RDONLY|O_BINARY) == -1 ) {
+  if ( (fd = open(path, O_RDONLY|O_BINARY) == -1) ) {
 #else
   if ( (fd = open(path, O_RDONLY)) == -1) {
 #endif

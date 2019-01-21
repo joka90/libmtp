@@ -29,8 +29,8 @@
 #ifndef LIBMTP_H_INCLUSION_GUARD
 #define LIBMTP_H_INCLUSION_GUARD
 
-#define LIBMTP_VERSION 0.3.5
-#define LIBMTP_VERSION_STRING "0.3.5"
+#define LIBMTP_VERSION 0.3.6
+#define LIBMTP_VERSION_STRING "0.3.6"
 
 /* This handles MSVC pecularities */
 #ifdef _MSC_VER
@@ -38,16 +38,10 @@
 #define __WIN32__
 #define snprintf _snprintf
 #define ssize_t SSIZE_T
-#endif
-
-#include <stdio.h>
-#include <usb.h>
-#include <stdint.h>
-
-#ifdef __WIN32__
 /*
- * Windows specific code, types that do not exist in Windows
- * sys/types.h
+ * Types that do not exist in Windows
+ * sys/types.h, but they exist in mingw32
+ * sys/types.h.
  */
 typedef char int8_t;
 typedef unsigned char uint8_t;
@@ -57,6 +51,10 @@ typedef __int32 int32_t;
 typedef unsigned __int32 uint32_t;
 typedef unsigned __int64 uint64_t;
 #endif
+
+#include <stdio.h>
+#include <usb.h>
+#include <stdint.h>
 
 /**
  * @defgroup types libmtp global type definitions

@@ -3,7 +3,7 @@
  * Main programs implementing several utilities in one.
  *
  * Copyright (C) 2006 Chris A. Debenham <chris@adebenham.com>
- * Copyright (C) 2008 Linus Walleij <triad@df.lth.se>
+ * Copyright (C) 2008-2009 Linus Walleij <triad@df.lth.se>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,6 +20,7 @@
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
  */
+#include <stdlib.h>
 #include <libgen.h>
 #include <getopt.h>
 #include <string.h>
@@ -67,20 +68,15 @@ usage(void)
 {
   printf("Usage: connect <command1> <command2>\n");
   printf("Commands: --delete [filename]\n");
-  printf("          --sendfile [source],[destination]\n");
-  printf("          --sendtrack [source],[destination]\n");
-  printf("          --getfile [source],[destination]\n");
+  printf("          --sendfile [source] [destination]\n");
+  printf("          --sendtrack [source] [destination]\n");
+  printf("          --getfile [source] [destination]\n");
   printf("          --newfolder [foldername]\n");
 }
 
 
 int main (int argc, char **argv)
 {
-  if ( argc < 2 ) {
-    usage ();
-    return 1;
-  }
-
   checklang();
 
   LIBMTP_Init();
@@ -106,6 +102,11 @@ int main (int argc, char **argv)
   } else if ((strncmp(basename(argv[0]),"mtp-sendtr",10) == 0) || (strncmp(basename(argv[0]),"sendtr",6) == 0)) {
     sendtrack_command(argc, argv);
   } else {  
+    if ( argc < 2 ) {
+      usage ();
+      return 1;
+    }
+
     while (1) {
       int option_index = 0;
       static struct option long_options[] = {
