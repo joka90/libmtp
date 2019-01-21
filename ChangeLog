@@ -1,3 +1,269 @@
+2007-03-07  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.c: remove libgphoto2 functions that we
+	  don't use.
+	* src/libusb-glue.h: export the free_mtpdevice_list() function,
+	  new signature of find_usb_devices().	
+	* src/libmtp.c: shrink code, pass as list of devices instead of
+	  several huge arrays between libmtp.c and USB glue layer in
+	  libusb-glue.c using the nifty list struct defined in libusb-glue.h.
+	* Eventually release libmtp 0.1.4.
+
+2007-03-06  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.c: rewrote one more function to be 
+	  non-recursive, perhaps I found the remaining bug, just
+	  cannot see that right now, will test tomorrow.
+	
+2007-03-05  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: rewrite recursive function to linear.
+	* src/libusb-glue.h: create a wrapper type for the
+	  device list instead of abusing the libusb device "next"
+	  field in our code.
+	* src/libusb-glue.c: rewrite all recursive functions to
+	  linear, use wrapper objects, don't copy the libusb device
+	  struct, instead just store a pointer to it. This magically
+	  solved a bug...
+	
+2007-03-04  Linus Walleij <triad@df.lth.se>
+
+	* src/Makefile.am: bump library interface to libmtp.so.5.2.0
+	  backwards compatible with any libmtp.so.5 interface, for
+	  imminent libmtp 0.1.4 release.
+	
+2007-03-03  Ted Bullock  <tbullock@canada.com>
+
+	* src/libusb-glue.c: Don't echo warnings about reading a single
+	  extra byte on devices in which DEVICE_FLAG_NO_ZERO_READS has
+	  been set
+	* src/libmtp.c: New API function to retrieve the number of devices
+	  in a list of connected devices
+	* src/libmtp.h: New API function to retrieve the number of devices
+	  in a list of connected devices
+	* examples/detect.c: Use new API function to count number of devices
+	  that were detected
+
+2007-03-03  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.h: Tiresome ramblings to explain exactly what
+	  the (now renamed) device flag DEVICE_FLAG_NO_ZERO_READS really 
+	  means.
+	* src/libusb-glue.c: Renamed flag. Indent code :-) Reading the code
+	  and being impressed by our ability to iron out the root cause
+	  of this kinda weird thing... Fix a few compile warnings.
+
+2007-03-03  Richard Low <richard@wentnet.com>
+
+	* src/libusb-glue.c: (hopefully) fixed iRiver read errors. Enabled
+	  get object prop lists for Clix since it appears to work.
+	* src/libusb-glue.h: ditto
+	* src/ptp.h: ditto
+
+2007-02-28  Linus Walleij <triad@df.lth.se>
+
+	* src/ptp.h: Upstream accepted our patch so synced it in.
+	
+2007-02-27  Linus Walleij <triad@df.lth.se>
+
+	* src/ptp.c: Synced in upstream version which removes the 
+	  offending line.
+	* src/libmtp.c: replaces strcmp() for strcasecmp() in folder
+	  detection since Windows and some devices (such as iRivers)
+	  ignore case and user capital letters for default folders.
+	
+2007-02-22  Ted Bullock  <tbullock@canada.com>
+
+	* src/ptp.c: Comment out line in ptp_exit_fd_handler that was 
+	  closing a file descriptor.  This is not the responsibility of 
+	  the PTP Layer. Defect and solution found by Rob Reardon
+
+2007-02-26  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: Implement a check for PTP_OC_MTP_SetObjectPropValue 
+	  in the LIBMTP_Update_Track_Metadata() function, there are 
+	  obviously devices that do not support this, but only 
+	  PTP_OC_MTP_SetObjPropList instead (such as the Samsung YH 925-GS), 
+	  but we haven't implemented that yet. Problems are 
+	  atleast reported correctly now.
+
+2007-02-24  Richard Low <richard@wentnet.com>
+
+	* src/libusb-glue.c: Fix incorrect transfer sizes causing zero
+	  write issues
+
+2007-02-23  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: Undeprecate getting first device code.
+	
+2007-02-23  Richard Low <richard@wentnet.com>
+
+	* src/libmtp.c: Fix crash when no devices connected
+
+2007-02-23  Ted Bullock  <tbullock@canada.com>
+
+	* examples/detect.c: Stub out probe functionality
+	* src/libusb-glue.c: Remove old uni-device cruft code
+	* src/libusb-glue.h: Remove old uni-device cruft code
+	* Replace LIBMTP_ERROR_N0_DEVICE_ATTACHED with
+		LIBMTP_ERROR_NO_DEVICE_ATTACHED across entire project
+	
+2007-02-22  Ted Bullock  <tbullock@canada.com>
+
+	* examples/albums.c: Updated to use new multi device code
+	* examples/tracks.c: Updated to use new multi device code
+	* examples/files.c: Updated to use new multi device code
+
+2007-02-18  Ted Bullock  <tbullock@canada.com>
+
+	* src/libmtp.c: Altered the function LIBMTP_Get_First_Device
+	  to wrap around the multi device API. Also added deprecation
+	  warnings to avoid using this function
+
+2007-02-17  Richard Low <richard@wentnet.com>
+
+	* src/libusb-glue.c: Debug output fixes and read/write sizes changed
+	* src/libmtp.c: memset params to 0 to avoid freeing unalloced
+	  memory
+	* src/ptp.h: read/write sizes changed
+
+2007-02-15  Robert Reardon <rreardon@monkshatch.vispa.com>
+
+	* src/libmtp.c: Fix a segfault in new error handling code.
+
+2007-02-15  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: Adding some sanity checks to error stack code.
+	* examples/newplaylist.c: LGPL boilerplate, crediting Robert.
+	* examples/playlists.c: LGPL boilerplate.
+	* examples/sendfile.c: LGPL boilerplate, crediting me and Chris.
+	* examples/sendtr.c: LGPL boilerplate, crediting me, Chris,
+	  Shaun, Enrique.
+	* examples/thumb.c: LGPL boilerplate, crediting Robert.
+	* examples/tracks.c: LGPL boilerplate.
+	* examples/trexist.c: LGPL boilerplate, crediting noone.
+
+2007-02-15  Ted Bullock  <tbullock@canada.com>
+
+	* examples/folders.c: Updated to use new multi device code
+	* src/libmtp.c: Fixed potential memory leaks
+	* src/libusb-glue.c: Fixed potential memory leaks and fixed device 
+	  release segfault for multiple devices
+
+2007-02-14  Ted Bullock  <tbullock@canada.com>
+
+	* src/libusb-glue.c: Wrote three new recursive functions to avoid 
+	  extreme levels of multiple indirection and to clean the code up 
+	  a bit for multiple devices.
+	* examples/detect.c: Adjusted function calls to use new multiple 
+	  device code.
+	* src/libmtp.h.in: Added prototype for LIBMTP_Release_Device_List
+
+2007-02-12  Ted Bullock  <tbullock@canada.com>
+
+	* src/libmtp.c: Two new functions (create_usb_mtp_devices and 
+	  LIBMTP_Get_Connected_Devices) to add support for multiple devices
+	  to client applications
+	* src/libmtp.h: Added LIBMTP_Get_Connected_Devices as a publicly
+	  accessible function
+	*libusb-glue.c: Renamed connect_mtp_devices to find_usb_devices
+	*libusb-glue.h: Renamed connect_mtp_devices to find_usb_devices
+
+2007-02-09  Ted Bullock  <tbullock@canada.com>
+
+	* src/libusb-glue.c: Addressed a number of potential memory leaks in
+	  the new multiple device code
+
+2007-02-05  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.h.in: LGPL boilerplate.
+	* src/libusb-glue.h: LGPL boilerplate.
+	* src/unicode.h: LGPL boilerplate.
+	* src/util.h: LGPL boilerplate.
+	* examples/albumart.c: LGPL boilerplate, crediting Andy.
+	* examples/pathutils.h: LGPL boilerplate, crediting Chris.
+	* examples/pathutils.c: LGPL boilerplate, crediting me and Chris.
+	* examples/common.h: LGPL boilerplate.
+	* examples/albums.c: LGPL boilerplate, crediting Chris.
+	* examples/connect.c: LGPL boilerplate, crediting Chris.
+	* examples/delfile.c: LGPL boilerplate, crediting me and Chris.
+	* examples/detect.c: LGPL boilerplate.
+	* examples/emptyfolders.c: LGPL boilerplate, crediting Andy.
+	* examples/files.c: LGPL boilerplate.
+	* examples/folders.c: LGPL boilerplate.
+	* examples/format.c: LGPL boilerplate.
+	* examples/getfile.c: LGPL boilerplate, crediting me and Chris.
+	* examples/getplaylist.c: LGPL boilerplate.
+	* examples/hotplug.c: LGPL boilerplate, crediting me and Marcus.
+	* examples/newfolder.c: LGPL boilerplate, crediting me and Chris.
+
+2007-02-02  Linus Walleij <triad@df.lth.se>
+
+	* src/ptp.c: sync upstream.
+	* src/ptp.h: dito.
+	* src/ptp-pack.c: dito.
+	* src/libmtp.c: make changes necessary to handle
+	  the new iconv(3) code in ptp-pack.c. People will have to
+	  use recent stdlibc, glibc or libiconv. Also call new memory
+	  clean-up functions. Fix LGPL boilerplate text.
+	* src/unicode.c: Fix LGPL boilerplate text.
+	* src/utils.c: Fix LGPL boilerplate text.
+	* src/libusb-glue.c: Fix LGPL boilerplate text.
+
+2007-01-24  Ted Bullock <tbullock@canada.com>
+
+	* src/libusb-glue.c: new function to retrieve multiple device
+	  instances.
+	* src/libusb-glue.h: dito.
+	* src/libmtp.h.in: new error codes.
+
+2007-01-22  Linus Walleij <triad@df.lth.se>
+
+	* examples/albumart.c: use the new errostack.
+	* examples/delfile.c: dito.
+	* examples/detect.c: dito.
+	* examples/emptyfolders.c: dito.
+	* examples/format.c: dito.
+	* examples/getfile.c: dito.
+	* examples/getplaylist.c: dito.
+	* examples/newfolder.c: dito.
+	* examples/newplaylist.c: dito.
+	* examples/playlists.c: dito.
+	* examples/sendfile.c: dito.
+	* examples/sendtr.c: dito.
+	* examples/thumb.c: dito.
+	* src/libmtp.c: add some errors to the stack so we can
+	  see how it's to be used. (Just a first try...)
+	* src/libusb-glue.c: move the LIBMTP_Get_Supported_Devices()
+	  function into this file cause it only return USB devices
+	  anyway and could be renamed LIBMTP_Get_Supported_USB_Devices()
+	  (but let's not do that renaming since it would break the API).
+	  For now let's understand this is a USB-only function by
+	  simply putting it in the libusb-glue.c file.
+	
+2007-01-22  Ted Bullock <tbullock@canada.com>
+
+	* src/libusb-glue.c: first hack at creating an interface
+	  to retrieve multiple devices.
+	* src/libmtp.h.in: new error codes related to multiple devices.
+
+2007-01-21  Richard Low <richard@wentnet.com>
+
+	* src/libusb-glue.c: more new devices
+
+2007-01-20  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.h.in: error stack handling like in libnjb.
+	  just bare bones implementation as of now but the idea
+	  should be clearly visible. TODO: add a plethora of
+	  errors and adjust examples to make use of the error
+	  stack.
+	* src/libmtp.c: dito.
+	
+2007-01-20  Richard Low <richard@wentnet.com>
+
+	* src/libusb-glue.c: new device 'Philips PSA235'
+
 2007-01-16  Linus Walleij <triad@df.lth.se>
 
 	* configure.ac: bump and release 0.1.3.

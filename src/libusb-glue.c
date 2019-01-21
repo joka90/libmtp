@@ -1,12 +1,31 @@
 /*
- *  libusb-glue.c
+ * \file libusb-glue.c
+ * Low-level USB interface glue towards libusb.
  *
- *  Created by Richard Low on 24/12/2005. (as mtp-utils.c)
- *  Modified by Linus Walleij 2006-03-06
- *  (Notice that Anglo-Saxons use little-endian dates and Swedes use big-endian dates.)
+ * Copyright (C) 2005-2007 Richard A. Low <richard@wentnet.com>
+ * Copyright (C) 2005-2007 Linus Walleij <triad@df.lth.se>
+ * Copyright (C) 2006-2007 Marcus Meissner
+ * Copyright (C) 2007 Ted Bullock
  *
- * This file adds some utils (many copied from ptpcam.c from libptp2) to
- * use MTP devices. Include mtp-utils.h to use any of the ptp/mtp functions.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ *
+ * Created by Richard Low on 24/12/2005. (as mtp-utils.c)
+ * Modified by Linus Walleij 2006-03-06
+ *  (Notice that Anglo-Saxons use little-endian dates and Swedes 
+ *   use big-endian dates.)
  *
  */
 #include "libmtp.h"
@@ -85,7 +104,9 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
   // From libgphoto2
   { "Samsung YH-820", 0x04e8, 0x502e, DEVICE_FLAG_NONE },
   // Contributed by polux2001@users.sourceforge.net
-  { "Samsung YH-925", 0x04e8, 0x502f, DEVICE_FLAG_NONE },
+  { "Samsung YH-925(-GS)", 0x04e8, 0x502f, DEVICE_FLAG_NONE },
+  // Contributed by aronvanammers on SourceForge
+  { "Samsung YH-925GS", 0x04e8, 0x5024, DEVICE_FLAG_NONE },
   // Contributed by anonymous person on SourceForge
   { "Samsung YP-T7J", 0x04e8, 0x5047, DEVICE_FLAG_NONE },
   // Reported by cstrickler@gmail.com
@@ -95,9 +116,13 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
   // Reported by Patrick <skibler@gmail.com>
   { "Samsung YP-K5", 0x04e8, 0x505a, DEVICE_FLAG_NONE },
   // Reported by Matthew Wilcox <matthew@wil.cx>
-  { "Samsung Yepp T9", 0x04e8, 0x507f, DEVICE_FLAG_NONE },
+  { "Samsung YP-T9", 0x04e8, 0x507f, DEVICE_FLAG_NONE },
+  // From Paul Clinch
+  { "Samsung YP-K3", 0x04e8, 0x5081, DEVICE_FLAG_NONE },
   // From a rouge .INF file
   { "Samsung YH-999 Portable Media Center", 0x04e8, 0x5a0f, DEVICE_FLAG_NONE },
+  // From Lionel Bouton
+  { "Samsung X830 Mobile Phone", 0x04e8, 0x6702, DEVICE_FLAG_NONE },
 
   /*
    * Intel
@@ -115,25 +140,33 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
    */
   // From libgphoto2 source
   { "Philips HDD6320", 0x0471, 0x01eb, DEVICE_FLAG_NONE },
-  { "Philips HDD6320/00", 0x0471, 0x014b, DEVICE_FLAG_NONE },
+  { "Philips HDD6320/00 & HDD6330/17", 0x0471, 0x014b, DEVICE_FLAG_NONE },
   // Anonymous SourceForge user
   { "Philips HDD1630/17", 0x0471, 0x014c, DEVICE_FLAG_NONE },
   // From Gerhard Mekenkamp
   { "Philips GoGear Audio", 0x0471, 0x0165, DEVICE_FLAG_NONE },
   // from XNJB forum
   { "Philips GoGear SA9200", 0x0471, 0x014f, DEVICE_FLAG_NONE },
+  // from XNJB user
+  { "Philips PSA235", 0x0471, 0x7e01, DEVICE_FLAG_NONE },
 
   /*
    * SanDisk
    */
   // Reported by Brian Robison
   { "SanDisk Sansa m240", 0x0781, 0x7400, DEVICE_FLAG_NONE },
-  // Reported by tangent_@users.sourceforge.net
-  { "SanDisk Sansa c150", 0x0781, 0x7410, DEVICE_FLAG_NONE },
+  /*
+   * Reported by tangent_@users.sourceforge.net
+   * this one is definately dual-mode and must be blocked from
+   * being taken by USB mass storage first.
+   */
+  { "SanDisk Sansa c150", 0x0781, 0x7410, DEVICE_FLAG_UNLOAD_DRIVER },
   // From libgphoto2 source
   { "SanDisk Sansa e200", 0x0781, 0x7420, DEVICE_FLAG_NONE },
   // Reported by gonkflea@users.sourceforge.net
   { "SanDisk Sansa e260", 0x0781, 0x7420, DEVICE_FLAG_NONE },
+  // Reported by anonymous user at sourceforge.net
+  { "SanDisk Sansa c250", 0x0781, 0x7450, DEVICE_FLAG_NONE },
 
   /*
    * iRiver
@@ -143,26 +176,26 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
    * Please test on your device if you believe it isn't broken!
    * Some devices from http://www.mtp-ums.net/viewdeviceinfo.php
    */
-  { "iRiver Portable Media Center", 0x1006, 0x4002, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
-  { "iRiver Portable Media Center", 0x1006, 0x4003, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  { "iRiver Portable Media Center", 0x1006, 0x4002, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS },
+  { "iRiver Portable Media Center", 0x1006, 0x4003, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS },
   // From libgphoto2 source
-  { "iRiver T10", 0x4102, 0x1113, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
-  { "iRiver T20 FM", 0x4102, 0x1114, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  { "iRiver T10", 0x4102, 0x1113, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS },
+  { "iRiver T20 FM", 0x4102, 0x1114, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS },
   // This appears at the MTP-UMS site
-  { "iRiver T20", 0x4102, 0x1115, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
-  { "iRiver U10", 0x4102, 0x1116, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
-  { "iRiver T10", 0x4102, 0x1117, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
-  { "iRiver T20", 0x4102, 0x1118, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
-  { "iRiver T30", 0x4102, 0x1119, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  { "iRiver T20", 0x4102, 0x1115, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS },
+  { "iRiver U10", 0x4102, 0x1116, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS },
+  { "iRiver T10", 0x4102, 0x1117, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS },
+  { "iRiver T20", 0x4102, 0x1118, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS },
+  { "iRiver T30", 0x4102, 0x1119, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS },
   // Reported by David Wolpoff
-  { "iRiver T10 2GB", 0x4102, 0x1120, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  { "iRiver T10 2GB", 0x4102, 0x1120, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS },
   // Rough guess this is the MTP device ID...
-  { "iRiver N12", 0x4102, 0x1122, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  { "iRiver N12", 0x4102, 0x1122, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS },
   // Reported by Adam Torgerson
-  { "iRiver Clix", 0x4102, 0x112a, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  { "iRiver Clix", 0x4102, 0x112a, DEVICE_FLAG_NO_ZERO_READS },
   // Reported by Scott Call
-  { "iRiver H10 20GB", 0x4102, 0x2101, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
-  { "iRiver H10", 0x4102, 0x2102, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST },
+  { "iRiver H10 20GB", 0x4102, 0x2101, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS },
+  { "iRiver H10", 0x4102, 0x2102, DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST | DEVICE_FLAG_NO_ZERO_READS },
 
   /*
    * Dell
@@ -174,6 +207,8 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
    */
   { "Toshiba Gigabeat MEGF-40", 0x0930, 0x0009, DEVICE_FLAG_NONE },
   { "Toshiba Gigabeat", 0x0930, 0x000c, DEVICE_FLAG_NONE },
+  // Reported by Nicholas Tripp
+  { "Toshiba Gigabeat P20", 0x0930, 0x000f, DEVICE_FLAG_NONE },
   // From libgphoto2
   { "Toshiba Gigabeat S", 0x0930, 0x0010, DEVICE_FLAG_NONE },
   // Reported by Rob Brown
@@ -184,6 +219,8 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
    */
   // Reported by gudul1@users.sourceforge.net
   { "Archos 104 (MTP mode)", 0x0e79, 0x120a, DEVICE_FLAG_NONE },
+  // Added by Jan Binder
+  { "Archos XS202 (MTP mode)", 0x0e79, 0x1208, DEVICE_FLAG_NONE },
 
   /*
    * Dunlop (OEM of EGOMAN ltd?) reported by Nanomad
@@ -211,8 +248,18 @@ static const LIBMTP_device_entry_t mtp_device_table[] = {
    * This is actually a camera, but it has a Microsoft device descriptor
    * and reports itself as supporting the MTP extension.
    */
-  {"Canon PowerShot A640 (PTP/MTP mode)", 0x04a9, 0x3139, DEVICE_FLAG_NONE }
-  
+  {"Canon PowerShot A640 (PTP/MTP mode)", 0x04a9, 0x3139, DEVICE_FLAG_NONE },
+
+  /*
+   * Nokia
+   */
+  {"Nokia Mobile Phones (MTP mode)", 0x0421, 0x04e1, DEVICE_FLAG_NONE },
+
+  /*
+   * LOGIK
+   * Sold in the UK, seem to be manufactured by CCTech in China.
+   */
+  {"Logik LOG DAX MP3 and DAB Player", 0x13d1, 0x7002, DEVICE_FLAG_NONE }
 };
 static const int mtp_device_table_size = sizeof(mtp_device_table) / sizeof(LIBMTP_device_entry_t);
 
@@ -220,9 +267,7 @@ int ptpcam_usb_timeout = USB_TIMEOUT;
 
 // Local functions
 static struct usb_bus* init_usb();
-static struct usb_device *probe_usb_bus_for_mtp_devices(void);
 static void close_usb(PTP_USB* ptp_usb, uint8_t interfaceNumber);
-static struct usb_device* find_device (int busn, int devicen, short force);
 static void find_endpoints(struct usb_device *dev, int* inep, int* inep_maxpacket, int* outep, int* outep_maxpacket, int* intep);
 static void clear_stall(PTP_USB* ptp_usb);
 static int init_ptp_usb (PTPParams* params, PTP_USB* ptp_usb, struct usb_device* dev);
@@ -231,13 +276,31 @@ static short ptp_read_func (unsigned long,PTPDataHandler*,void *data,unsigned lo
 static int usb_clear_stall_feature(PTP_USB* ptp_usb, int ep);
 static int usb_get_endpoint_status(PTP_USB* ptp_usb, int ep, uint16_t* status);
 
-
-int get_device_list(LIBMTP_device_entry_t ** const devices, int * const numdevs)
+/**
+ * Get a list of the supported USB devices.
+ *
+ * The developers depend on users of this library to constantly
+ * add in to the list of supported devices. What we need is the
+ * device name, USB Vendor ID (VID) and USB Product ID (PID).
+ * put this into a bug ticket at the project homepage, please.
+ * The VID/PID is used to let e.g. udev lift the device to
+ * console userspace access when it's plugged in.
+ *
+ * @param devices a pointer to a pointer that will hold a device
+ *        list after the call to this function, if it was
+ *        successful.
+ * @param numdevs a pointer to an integer that will hold the number
+ *        of devices in the device list if the call was successful.
+ * @return 0 if the list was successfull retrieved, any other
+ *        value means failure.
+ */
+int LIBMTP_Get_Supported_Devices_List(LIBMTP_device_entry_t ** const devices, int * const numdevs)
 {
   *devices = (LIBMTP_device_entry_t *) &mtp_device_table;
   *numdevs = mtp_device_table_size;
   return 0;
 }
+
 
 static struct usb_bus* init_usb()
 {
@@ -248,100 +311,186 @@ static struct usb_bus* init_usb()
 }
 
 /**
- * Check for the Microsoft OS device descriptor and returns device struct
+ * Small recursive function to append a new usb_device to the linked list of
+ * USB MTP devices
+ * @param devlist dynamic linked list of pointers to usb devices with MTP 
+ * properties.
+ * @param next New USB MTP device to be added to list
+ * @return nothing
+ */
+static mtpdevice_list_t *append_to_mtpdevice_list(mtpdevice_list_t *devlist,
+				     struct usb_device *newdevice)
+{
+  mtpdevice_list_t *new_list_entry;
+  
+  new_list_entry = (mtpdevice_list_t *) malloc(sizeof(mtpdevice_list_t));
+  if (new_list_entry == NULL) {
+    return NULL;
+  }
+  // Fill in USB device, if we *HAVE* to make a copy of the device do it here.
+  new_list_entry->libusb_device = newdevice;
+  new_list_entry->next = NULL;
+  
+  if (devlist == NULL) {
+    return new_list_entry;
+  } else {
+    mtpdevice_list_t *tmp = devlist;
+    while (tmp->next != NULL) {
+      tmp = tmp->next;
+    }
+    tmp->next = new_list_entry;
+  }
+  return devlist;
+}
+
+/**
+ * Small recursive function to free dynamic memory allocated to the linked list
+ * of USB MTP devices
+ * @param devlist dynamic linked list of pointers to usb devices with MTP 
+ * properties.
+ * @return nothing
+ */
+void free_mtpdevice_list(mtpdevice_list_t *devlist)
+{
+  mtpdevice_list_t *tmplist = devlist;
+
+  if (devlist == NULL)
+    return;
+  while (tmplist != NULL) {
+    mtpdevice_list_t *tmp = tmplist;
+    tmplist = tmplist->next;
+    // Do not free() the fields (ptp_usb, parms)! These are used elsewhere.
+    free(tmp);
+  }
+  return;
+}
+
+/**
+ * Check for the Microsoft OS device descriptor and return device struct
  * if the device is MTP-compliant. The function will only recognize
  * a single device connected to the USB bus.
- *
+ * @param mtp_device_list dynamic array of pointers to usb devices with MTP 
+ *        properties (if this list is not empty, new entries will be appended
+ *        to the list).
  * @return an MTP-compliant USB device if one was found, else NULL.
  */
-static struct usb_device *probe_usb_bus_for_mtp_devices(void)
+static LIBMTP_error_number_t get_mtp_usb_device_list(mtpdevice_list_t ** mtp_device_list)
 {
-  struct usb_bus *bus;
-  
-  bus = init_usb();
-  for (; bus; bus = bus->next) {
-    struct usb_device *dev;
-    
-    for (dev = bus->devices; dev; dev = dev->next) {
+  struct usb_bus *bus = init_usb();
+
+  for (; bus != NULL; bus = bus->next) {
+    struct usb_device *dev = bus->devices;
+    for (; dev != NULL; dev = dev->next) {
       usb_dev_handle *devh;
       unsigned char buf[1024], cmd;
       int ret;
-  
+      
+      /* Don't examine hubs (no point in that) */
+      if (dev->descriptor.bDeviceClass == USB_CLASS_HUB) {
+	continue;
+      }
+
+      /* Attempt to open Device on this port */
       devh = usb_open(dev);
       if (devh == NULL) {
-	continue;
+        /* Could not open this device, continue */
+        continue;
       }
 
-      // Read the special descripor, if possible...
+      /* Read the special descriptor */
       ret = usb_get_descriptor(devh, 0x03, 0xee, buf, sizeof(buf));
-      
-      if (ret < 10) {
-	// printf("Device: VID %04x/PID %04x: no extended device property...\n",
-	//       dev->descriptor.idVendor,
-	//       dev->descriptor.idProduct);
-	usb_close(devh);
-	continue;
-      }
-      
-      // It is atleast 10 bytes...
-      if (!((buf[2] == 'M') && (buf[4]=='S') && (buf[6]=='F') && (buf[8]=='T'))) {
-	printf("This is not a Microsoft MTP descriptor...\n");
-	printf("Device response to read device property 0xee:\n");
-	data_dump_ascii (stdout, buf, ret, 0);
-	usb_close(devh);
-	continue;
-      }
-      
-      cmd = buf[16];
-      ret = usb_control_msg (devh, USB_ENDPOINT_IN|USB_RECIP_DEVICE|USB_TYPE_VENDOR, 
-			     cmd, 0, 4, (char *) buf, sizeof(buf), 1000);
-      if (ret == -1) {
-	//printf("Decice could not respond to control message 1.\n");
-	usb_close(devh);
-	continue;
-      }
-      
-      if (ret > 0x15) {
-	if ((buf[0x12] != 'M') || (buf[0x13] != 'T') || (buf[0x14] != 'P')) {
-	  printf("The device has a Microsoft device descriptor, but it's not MTP.\n");
-	  printf("This is not an MTP device. Presumable it is USB mass storage\n");
-	  printf("with some additional Janus (DRM) support.\n");
-	  printf("Device response to control message 1:\n");
-	  data_dump_ascii (stdout, buf, ret, 0);
-	  continue;
-	}
-      } else {
-	// Not MTP or broken
-	continue;
-      }
 
-      ret = usb_control_msg (devh, USB_ENDPOINT_IN|USB_RECIP_DEVICE|USB_TYPE_VENDOR, 
-			     cmd, 0, 5, (char *) buf, sizeof(buf), 1000);
+      /* Check if descriptor length is at least 10 bytes */
+      if (ret < 10) {
+        usb_close(devh);
+        continue;
+      }
+      
+      /* Check if this device has a Microsoft Descriptor */
+      if (!((buf[2] == 'M') && (buf[4] == 'S') &&
+            (buf[6] == 'F') && (buf[8] == 'T'))) {
+        usb_close(devh);
+        continue;
+      }
+      
+      /* Check if device responds to control message 1 or if there is an error*/      
+      cmd = buf[16];
+      ret = usb_control_msg (devh,
+			     USB_ENDPOINT_IN|USB_RECIP_DEVICE|USB_TYPE_VENDOR,
+			     cmd,
+			     0,
+			     4,
+			     (char *) buf,
+			     sizeof(buf),
+			     1000);
+      
+      /* If this is true, the device either isn't MTP or there was an error */
+      if (ret <= 0x15) {
+        /* TODO: If there was an error, flag it and let the user know somehow */
+        /* if(ret == -1) {} */
+        usb_close(devh);
+        continue;
+      }
+      
+      /* Check if device is MTP or if it is something like a USB Mass Storage 
+         device with Janus DRM support */
+      if ((buf[0x12] != 'M') || (buf[0x13] != 'T') || (buf[0x14] != 'P')) {
+        usb_close(devh);
+        continue;
+      }
+      
+      /* After this point we are probably dealing with an MTP device */
+
+      /* Check if device responds to control message 2 or if there is an error*/
+      ret = usb_control_msg (devh,
+                              USB_ENDPOINT_IN|USB_RECIP_DEVICE|USB_TYPE_VENDOR,
+                              cmd,
+                              0,
+                              5,
+                              (char *) buf,
+                              sizeof(buf),
+                              1000);
+      
+      /* If this is true, the device errored against control message 2 */
       if (ret == -1) {
-	//printf("Device could not respond to control message 2.\n");
-	usb_close(devh);
-	// Return the device anyway, it said previously it was MTP, right?
-	return dev;
+        /* TODO: Implement callback function to let managing program know there
+           was a problem, along with description of the problem */
+        fprintf(stderr, "Potential MTP Device with VendorID:%04x and "
+		"ProductID:%04x encountered an error responding to "
+		"control message 2.\n"
+		"Problems may arrise but continuing\n",
+		dev->descriptor.idVendor, dev->descriptor.idProduct);
+      } else if (ret <= 0x15) {
+        /* TODO: Implement callback function to let managing program know there
+           was a problem, along with description of the problem */
+        fprintf(stderr, "Potential MTP Device with VendorID:%04x and "
+		"ProductID:%04x responded to control message 2 with a "
+		"response that was too short. Problems may arrise but "
+		"continuing\n",
+		dev->descriptor.idVendor, dev->descriptor.idProduct);
+      } else if ((buf[0x12] != 'M') || (buf[0x13] != 'T') || (buf[0x14] != 'P')) {
+        /* TODO: Implement callback function to let managing program know there
+           was a problem, along with description of the problem */
+        fprintf(stderr, "Potential MTP Device with VendorID:%04x and "
+		"ProductID:%04x encountered an error responding to "
+		"control message 2\n"
+		"Problems may arrise but continuing\n",
+		dev->descriptor.idVendor, dev->descriptor.idProduct);
       }
       
-      if (ret > 0x15) {
-	if ((buf[0x12] != 'M') || (buf[0x13] != 'T') || (buf[0x14] != 'P')) {
-	  printf("This device does not respond with MTP characteristics on\n");
-	  printf("the second device property read (0x05), but will be regarded\n");
-	  printf("as MTP anyway.\n");
-	  printf("Device response to control message 2:\n");
-	  data_dump_ascii (stdout, buf, ret, 0);
-	}
-      }
-      
+      /* Close the USB device handle */
       usb_close(devh);
-      // We can return the device here, it will be the first. 
-      // If it was not MTP, the loop continues before it reaches this point.
-      return dev;
+      
+      /* Append this usb device to the MTP USB Device List */
+      *mtp_device_list = append_to_mtpdevice_list(*mtp_device_list, dev);
     }
   }
-  // If nothing was found we end up here.
-  return NULL;
+  
+  /* If nothing was found we end up here. */
+  if(*mtp_device_list == NULL)
+    return LIBMTP_ERROR_NO_DEVICE_ATTACHED;
+  else
+    return LIBMTP_ERROR_NONE;
 }
 
 /**
@@ -350,6 +499,7 @@ static struct usb_device *probe_usb_bus_for_mtp_devices(void)
  * which is intended for use with <b>udev</b> or other hotplug
  * mechanisms. The idea is that a script may want to know if the
  * just plugged-in device was an MTP device or not.
+ * 
  * @param vid the Vendor ID (VID) of the first device found.
  * @param pid the Product ID (PID) of the first device found.
  * @return the number of detected devices or -1 if the call
@@ -357,12 +507,17 @@ static struct usb_device *probe_usb_bus_for_mtp_devices(void)
  */
 int LIBMTP_Detect_Descriptor(uint16_t *vid, uint16_t *pid)
 {
-  struct usb_device *dev = probe_usb_bus_for_mtp_devices();
-  if (dev == NULL) {
-    return 0;
+  mtpdevice_list_t *devlist;
+  LIBMTP_error_number_t ret;  
+
+  ret = get_mtp_usb_device_list(&devlist);
+  if (ret != LIBMTP_ERROR_NONE) {
+    *vid = *pid = 0;
+    return -1;
   }
-  *vid = dev->descriptor.idVendor;
-  *pid = dev->descriptor.idProduct;
+  *vid = devlist->libusb_device->descriptor.idVendor;
+  *pid = devlist->libusb_device->descriptor.idProduct;
+  free_mtpdevice_list(devlist);
   return 1;
 }
 
@@ -435,7 +590,7 @@ ptp_error (PTPParams *params, const char *format, ...)
 
 /*
  * ptp_read_func() and ptp_write_func() are
- * based on same functions in library.c in libgphoto2.
+ * based on same functions usb.c in libgphoto2.
  * Much reading packet logs and having fun with trials and errors
  * reveals that WMP / Windows is probably using an algorithm like this
  * for large transfers:
@@ -449,8 +604,14 @@ ptp_error (PTPParams *params, const char *format, ...)
  * 4. Send remaining bytes MOD sizeof(endpoint)
  * 5. Send remaining bytes. If this happens to be exactly sizeof(endpoint)
  *    then also send a zero-length package.
+ *
+ * Further there is some special quirks to handle zero reads from the
+ * device, since some devices can't do them at all due to shortcomings
+ * of the USB slave controller in the device.
  */
-#define CONTEXT_BLOCK_SIZE	0x10000
+#define CONTEXT_BLOCK_SIZE_1	0x3e00
+#define CONTEXT_BLOCK_SIZE_2  0x200
+#define CONTEXT_BLOCK_SIZE    CONTEXT_BLOCK_SIZE_1+CONTEXT_BLOCK_SIZE_2
 static short
 ptp_read_func (
 	unsigned long size, PTPDataHandler *handler,void *data,
@@ -463,19 +624,45 @@ ptp_read_func (
   unsigned long curread = 0;
   unsigned long written;
   unsigned char *bytes;
+  int expect_terminator_byte = 0;
 
   // This is the largest block we'll need to read in.
   bytes = malloc(CONTEXT_BLOCK_SIZE);
   while (curread < size) {
-    toread = size - curread;
-    if (toread > CONTEXT_BLOCK_SIZE) {
-      toread = CONTEXT_BLOCK_SIZE;
-    } else if (toread > ptp_usb->outep_maxpacket) {
-      toread -= toread % ptp_usb->outep_maxpacket;
-    }
-
-    result = USB_BULK_READ(ptp_usb->handle, ptp_usb->inep, (char*)bytes, toread, ptpcam_usb_timeout);
     
+#ifdef ENABLE_USB_BULK_DEBUG
+    printf("Remaining size to read: 0x%04x bytes\n", size - curread);
+#endif
+    // check equal to condition here
+    if (size - curread < CONTEXT_BLOCK_SIZE)
+    {
+      // this is the last packet
+      toread = size - curread;
+      // this is equivalent to zero read for these devices
+      if (readzero && ptp_usb->device_flags & DEVICE_FLAG_NO_ZERO_READS && toread % 64 == 0) {
+        toread += 1;
+        expect_terminator_byte = 1;
+      }
+    }
+    else if (curread == 0)
+      // we are first packet, but not last packet
+      toread = CONTEXT_BLOCK_SIZE_1;
+    else if (toread == CONTEXT_BLOCK_SIZE_1)
+      toread = CONTEXT_BLOCK_SIZE_2;
+    else if (toread == CONTEXT_BLOCK_SIZE_2)
+      toread = CONTEXT_BLOCK_SIZE_1;
+    else
+      printf("unexpected toread size 0x%04x, 0x%04x remaining bytes\n", 
+	     (unsigned int) toread, (unsigned int) (size-curread));
+
+#ifdef ENABLE_USB_BULK_DEBUG
+    printf("Reading in 0x%04x bytes\n", toread);
+#endif
+    result = USB_BULK_READ(ptp_usb->handle, ptp_usb->inep, (char*)bytes, toread, ptpcam_usb_timeout);
+#ifdef ENABLE_USB_BULK_DEBUG
+    printf("Result of read: 0x%04x\n", result);
+#endif
+        
     if (result < 0) {
       return PTP_ERROR_IO;
     }
@@ -486,6 +673,11 @@ ptp_read_func (
     else
       data_dump_ascii (stdout,bytes,result,16);
 #endif
+    
+    // want to discard extra byte
+    if (expect_terminator_byte && result == toread)
+      result--;
+    
     handler->putfunc(NULL, handler->private, result, bytes, &written);
     ptp_usb->current_transfer_complete += result;
     curread += result;
@@ -511,9 +703,12 @@ ptp_read_func (
   free (bytes);
   
   // there might be a zero packet waiting for us...
-  if (readzero && curread % ptp_usb->outep_maxpacket == 0) {
+  if (readzero && 
+      !(ptp_usb->device_flags & DEVICE_FLAG_NO_ZERO_READS) && 
+      curread % ptp_usb->outep_maxpacket == 0) {
     char temp;
     int zeroresult = 0;
+
 #ifdef ENABLE_USB_BULK_DEBUG
     printf("<==USB IN\n");
     printf("Zero Read\n");
@@ -743,7 +938,7 @@ ptp_usb_sendreq (PTPParams* params, PTPContainer* req)
 	if (written != towrite) {
 		ptp_error (params, 
 			"PTP: request code 0x%04x sending req wrote only %ld bytes instead of %d",
-			written, towrite
+			req->Code, written, towrite
 		);
 		ret = PTP_ERROR_IO;
 	}
@@ -768,7 +963,7 @@ ptp_usb_senddata (PTPParams* params, PTPContainer* ptp,
 	usbdata.trans_id= htod32(ptp->Transaction_ID);
   
 	((PTP_USB*)params->data)->current_transfer_complete = 0;
-	((PTP_USB*)params->data)->current_transfer_total = size;
+	((PTP_USB*)params->data)->current_transfer_total = size+PTP_USB_BULK_HDR_LEN;
 
 	if (params->split_header_data) {
 		datawlen = 0;
@@ -776,7 +971,7 @@ ptp_usb_senddata (PTPParams* params, PTPContainer* ptp,
 	} else {
 		unsigned long gotlen;
 		/* For all camera devices. */
-		datawlen = (size<PTP_USB_BULK_PAYLOAD_LEN)?size:PTP_USB_BULK_PAYLOAD_LEN;
+		datawlen = (size<PTP_USB_BULK_PAYLOAD_LEN_WRITE)?size:PTP_USB_BULK_PAYLOAD_LEN_WRITE;
 		wlen = PTP_USB_BULK_HDR_LEN + datawlen;
 		ret = handler->getfunc(params, handler->private, datawlen, usbdata.payload.data, &gotlen);
 		if (ret != PTP_RC_OK)
@@ -833,7 +1028,7 @@ static uint16_t ptp_usb_getpacket(PTPParams *params,
 		return PTP_RC_OK;
 	}
 	ptp_init_recv_memory_handler (&memhandler);
-	ret = ptp_read_func( sizeof(*packet), &memhandler, params->data, rlen, 0);
+	ret = ptp_read_func(PTP_USB_BULK_HS_MAX_PACKET_LEN_READ, &memhandler, params->data, rlen, 0);
 	ptp_exit_recv_memory_handler (&memhandler, &x, rlen);
 	if (x) {
 		memcpy (packet, x, *rlen);
@@ -874,15 +1069,15 @@ ptp_usb_getdata (PTPParams* params, PTPContainer* ptp, PTPDataHandler *handler)
 				int xret;
 
 				xret = ptp_read_func(
-					PTP_USB_BULK_HS_MAX_PACKET_LEN,
+					PTP_USB_BULK_HS_MAX_PACKET_LEN_READ,
 					handler,
 					params->data,
 					&readdata,
-          0
+					0
 				);
 				if (xret == -1)
 					return PTP_ERROR_IO;
-				if (readdata < PTP_USB_BULK_HS_MAX_PACKET_LEN)
+				if (readdata < PTP_USB_BULK_HS_MAX_PACKET_LEN_READ)
 					break;
 			}
 			return PTP_RC_OK;
@@ -908,8 +1103,13 @@ ptp_usb_getdata (PTPParams* params, PTPContainer* ptp, PTPDataHandler *handler)
 				memcpy(params->response_packet,
 				       (uint8_t *) &usbdata + packlen, surplen);
 				params->response_packet_size = surplen;
-			} else {
-				ptp_debug (params, "ptp2/ptp_usb_getdata: read %d bytes too much, expect problems!", rlen - dtoh32(usbdata.length));
+			/* Ignore reading one extra byte if device flags have been set */
+			} else if( !(((PTP_USB *)params->data)->device_flags &
+																						DEVICE_FLAG_NO_ZERO_READS &&
+									rlen - dtoh32(usbdata.length) == 1)) {
+				ptp_debug (params, "ptp2/ptp_usb_getdata: read %d bytes "
+					   "too much, expect problems!", 
+					   rlen - dtoh32(usbdata.length));
 			}
 			rlen = packlen;
 		}
@@ -925,26 +1125,41 @@ ptp_usb_getdata (PTPParams* params, PTPContainer* ptp, PTPDataHandler *handler)
 		if (dtoh32(usbdata.length) > 12 && (rlen==12))
 			params->split_header_data = 1;
 
-		data = malloc(PTP_USB_BULK_HS_MAX_PACKET_LEN);
+		data = malloc(PTP_USB_BULK_HS_MAX_PACKET_LEN_READ);
 		/* Copy first part of data to 'data' */
 		handler->putfunc(
 			params, handler->private, rlen - PTP_USB_BULK_HDR_LEN, usbdata.payload.data,
 			&written
 		);
-
+    
+		if (((PTP_USB *)params->data)->device_flags & DEVICE_FLAG_NO_ZERO_READS && 
+		    len+PTP_USB_BULK_HDR_LEN == PTP_USB_BULK_HS_MAX_PACKET_LEN_READ) {
+#ifdef ENABLE_USB_DEBUG
+		  printf("Reading in extra terminating byte\n");
+#endif
+		  // need to read in extra byte and discard it
+		  int result = 0;
+		  char byte = 0;
+		  PTP_USB *ptp_usb = (PTP_USB *)params->data;
+		  result = USB_BULK_READ(ptp_usb->handle, ptp_usb->inep, &byte, 1, ptpcam_usb_timeout);
+		  
+		  if (result != 1)
+		    printf("Could not read in extra byte for PTP_USB_BULK_HS_MAX_PACKET_LEN_READ long file, return value 0x%04x\n", result);
+		}
+		
 		/* Is that all of data? */
 		if (len+PTP_USB_BULK_HDR_LEN<=rlen) break;
-
-		/* If not read the rest of it. */
+		
 		ret=ptp_read_func(len - (rlen - PTP_USB_BULK_HDR_LEN),
-				      handler,
-				      params->data, &rlen, 1);
+				  handler,
+				  params->data, &rlen, 1);
+		
 		if (ret!=PTP_RC_OK) {
-			ret = PTP_ERROR_IO;
-			break;
+		  ret = PTP_ERROR_IO;
+		  break;
 		}
 	} while (0);
-/*
+	/*
 	if (ret!=PTP_RC_OK) {
 		ptp_error (params,
 		"PTP: request code 0x%04x getting data error 0x%04x",
@@ -1075,6 +1290,10 @@ static int init_ptp_usb (PTPParams* params, PTP_USB* ptp_usb, struct usb_device*
   params->getdata_func=ptp_usb_getdata;
   params->data=ptp_usb;
   params->transaction_id=0;
+  /*
+   * This is hardcoded here since we have no devices whatsoever that are BE.
+   * Change this the day we run into our first BE device (if ever).
+   */
   params->byteorder = PTP_DL_LE;
   
   if ((device_handle = usb_open(dev))){
@@ -1180,161 +1399,284 @@ static void close_usb(PTP_USB* ptp_usb, uint8_t interfaceNumber)
   usb_close(ptp_usb->handle);
 }
 
-
-/*
- find_device() returns the pointer to a usb_device structure matching
- given busn, devicen numbers. If any or both of arguments are 0 then the
- first matching PTP device structure is returned. 
- */
-static struct usb_device* find_device (int busn, int devn, short force)
-{
-  struct usb_bus *bus;
-  struct usb_device *dev;
-  
-  bus=init_usb();
-  for (; bus; bus = bus->next)
-    for (dev = bus->devices; dev; dev = dev->next)
-      /* somtimes dev->config is null, not sure why... */
-      if (dev->config != NULL)
-	if (dev->descriptor.bDeviceClass!=USB_CLASS_HUB)
-	  {
-	    int curbusn, curdevn;
-	    
-	    curbusn=strtol(bus->dirname,NULL,10);
-	    curdevn=strtol(dev->filename,NULL,10);
-	    
-	    if (devn==0) {
-	      if (busn==0) return dev;
-	      if (curbusn==busn) return dev;
-	    } else {
-	      if ((busn==0)&&(curdevn==devn)) return dev;
-	      if ((curbusn==busn)&&(curdevn==devn)) return dev;
-	    }
-	  }
-  return NULL;
-}
-
 /**
- * This function scans through the device list to see if there are
- * some devices to connect to. The table at the top of this file is
- * used to identify potential devices.
+ * This function scans through the connected usb devices on a machine and
+ * if they match known Vendor and Product identifiers appends them to the
+ * dynamic array mtp_device_list. Be sure to call 
+ * <code>free(mtp_device_list)</code> when you are done with it, assuming it
+ * is not NULL.
+ *
+ * @param mtp_device_list dynamic array of pointers to usb devices known to
+ *        be valid MTP devices
+ * @return LIBMTP_ERROR_NONE implies that devices have been found, scan the list
+ *        appropriately. LIBMTP_ERROR_NO_DEVICE_ATTACHED implies that no devices have
+ *        been found.
  */
-uint16_t connect_first_device(PTPParams *params, PTP_USB *ptp_usb, uint8_t *interfaceNumber)
+static LIBMTP_error_number_t get_mtp_usb_known_devices(mtpdevice_list_t **mtp_device_list)
 {
-  struct usb_bus *bus;
-  struct usb_device *dev;
-  struct usb_endpoint_descriptor *ep;
-  PTPDeviceInfo deviceinfo;
-  uint16_t ret=0;
-  int n;
+  /* Scan through all attached usb and devices */
+  struct usb_bus *bus = init_usb();
+  for(; bus != NULL; bus = bus->next) {
+    struct usb_device *dev = bus->devices;
+    for(; dev != NULL; dev = dev->next) {
+      int i;
 
-  // Reset device flags
-  ptp_usb->device_flags = DEVICE_FLAG_NONE;
-  // First try to locate the device using the extended
-  // device descriptor.
-  dev = probe_usb_bus_for_mtp_devices();
-
-  if (dev != NULL) {
-    int i;
-
-    // See if we can find the name of this beast
-    for (i = 0; i < mtp_device_table_size; i++) {
-      LIBMTP_device_entry_t const *mtp_device = &mtp_device_table[i];
-      if (dev->descriptor.idVendor == mtp_device->vendor_id &&
-	  dev->descriptor.idProduct == mtp_device->product_id ) {
-	printf("Autodetected device \"%s\" (VID=%04x,PID=%04x) is known.\n", 
-	       mtp_device->name, dev->descriptor.idVendor, dev->descriptor.idProduct);
-	ptp_usb->device_flags = mtp_device->device_flags;
-	break;
-      }
-    }
-    if (i == mtp_device_table_size) {
-      printf("Autodetected device with VID=%04x and PID=%04x is UNKNOWN.\n", 
-	     dev->descriptor.idVendor, dev->descriptor.idProduct);
-      printf("Please report this VID/PID and the device model name etc to the\n");
-      printf("libmtp development team!\n");
-    }
-  }
-
-  // If autodetection fails, scan the bus for well known devices.
-  if (dev == NULL) {
-    bus = init_usb();
-    for (; bus; bus = bus->next) {
-      for (dev = bus->devices; dev; dev = dev->next) {
-	int i;
-	
-	// Loop over the list of supported devices
-	for (i = 0; i < mtp_device_table_size; i++) {
-	  LIBMTP_device_entry_t const *mtp_device = &mtp_device_table[i];
-	  
-	  if (dev->descriptor.bDeviceClass != USB_CLASS_HUB && 
-	      dev->descriptor.idVendor == mtp_device->vendor_id &&
-	      dev->descriptor.idProduct == mtp_device->product_id ) {
-	    
-	    printf("Found non-autodetected device \"%s\" on USB bus...\n", mtp_device->name);
-	    ptp_usb->device_flags = mtp_device->device_flags;
-            goto next_step;
-	    
-	  }
+      for(i = 0; i < mtp_device_table_size; i++) {
+	if(dev->descriptor.bDeviceClass != USB_CLASS_HUB && 
+	   dev->descriptor.idVendor == mtp_device_table[i].vendor_id &&
+	   dev->descriptor.idProduct == mtp_device_table[i].product_id) {
+	  /* Append this usb device to the MTP device list */
+	  *mtp_device_list = append_to_mtpdevice_list(*mtp_device_list, dev);
+	  break;
 	}
       }
     }
   }
-
-next_step:
-  // Still not found any?
-  if (dev == NULL) {
-    return PTP_CD_RC_NO_DEVICES;
-  }
-
-  // Found a device, then assign endpoints to ptp_usb...
-  ep = dev->config->interface->altsetting->endpoint;
-  n = dev->config->interface->altsetting->bNumEndpoints;
-  find_endpoints(dev, &ptp_usb->inep, &ptp_usb->inep_maxpacket,
-		 &ptp_usb->outep, &ptp_usb->outep_maxpacket, &ptp_usb->intep);
   
-  // printf("Init PTP USB...\n");
-  if (init_ptp_usb(params, ptp_usb, dev) < 0) {
-    return PTP_CD_RC_ERROR_CONNECTING;
-  }
-  
-  ret = ptp_opensession(params,1);
-
-  // This works in situations where previous bad applications have not used LIBMTP_Release_Device on exit
-  if (ret == PTP_ERROR_IO) {
-	printf("%s\n","PTP ERROR IO: Trying again after resetting USB");
-        // printf("%s\n","Closing USB interface...");
-	close_usb(ptp_usb,dev->config->interface->altsetting->bInterfaceNumber);
-        // printf("%s\n","Init PTP USB...");
-	if (init_ptp_usb(params, ptp_usb, dev) < 0) {
- 	   return PTP_CD_RC_ERROR_CONNECTING;
-  	}
-	
-	ret = ptp_opensession(params,1);
-  }
-
-  // printf("Session open (%d)...\n", ret);
-  if (ret == PTP_RC_InvalidTransactionID) {
-    params->transaction_id += 10;
-    ret = ptp_opensession(params,1);
-  }
-  if (ret != PTP_RC_SessionAlreadyOpened && ret != PTP_RC_OK) {
-    printf("Could not open session! (Return code %d)\n  Try to reset the device.\n", ret);
-    usb_release_interface(ptp_usb->handle,dev->config->interface->altsetting->bInterfaceNumber);
-  }
-
-  // It is actually permissible to call this before opening the session
-  ret = ptp_getdeviceinfo(params, &deviceinfo);
-  if (ret != PTP_RC_OK) {
-    printf("Could not get device info!\n");
-    usb_release_interface(ptp_usb->handle,dev->config->interface->altsetting->bInterfaceNumber);
-    return PTP_CD_RC_ERROR_CONNECTING;
-  }
-  
-  // we're connected, return OK
-  *interfaceNumber = dev->config->interface->altsetting->bInterfaceNumber;  
-  return PTP_CD_RC_CONNECTED;
+  /* If nothing was found we end up here. */
+  if(*mtp_device_list == NULL)
+    return LIBMTP_ERROR_NO_DEVICE_ATTACHED;
+  else
+    return LIBMTP_ERROR_NONE;
 }
+
+static LIBMTP_error_number_t prime_device_memory(mtpdevice_list_t *devlist)
+{
+  mtpdevice_list_t *tmplist = devlist;
+ 
+  while (tmplist != NULL) {
+    /* Allocate a parameter box */
+    tmplist->params = (PTPParams *) malloc(sizeof(PTPParams));
+    tmplist->ptp_usb = (PTP_USB *) malloc(sizeof(PTP_USB));
+    
+    /* Check for allocation Error */
+    if(tmplist->params == NULL || tmplist->ptp_usb == NULL) {
+      /* Error and deallocation of memory will be handled by caller. */
+      return LIBMTP_ERROR_MEMORY_ALLOCATION;
+    }
+    
+    /* Start with a blank slate (includes setting device_flags to 0) */
+    memset(tmplist->params, 0, sizeof(PTPParams));
+    memset(tmplist->ptp_usb, 0, sizeof(PTP_USB));
+    tmplist = tmplist->next;
+  }
+  return LIBMTP_ERROR_NONE;
+}
+
+static void assign_known_device_flags(mtpdevice_list_t *devlist)
+{
+  int i;
+  mtpdevice_list_t *tmplist = devlist;
+  uint8_t current_device = 0;
+  
+  /* Search through known device list and set correct device flags */
+  while (tmplist != NULL) {
+    int device_known = 0;
+    
+    for(i = 0; i < mtp_device_table_size; i++) {
+      if(tmplist->libusb_device->descriptor.idVendor == mtp_device_table[i].vendor_id &&
+	 tmplist->libusb_device->descriptor.idProduct == mtp_device_table[i].product_id) {
+	/* This device is known, assign the correct device flags */
+	/* Note that ptp_usb[current_device] could potentially be NULL */
+	if(tmplist->ptp_usb != NULL) {
+	  tmplist->ptp_usb->device_flags =  mtp_device_table[i].device_flags;
+	  
+	  /*
+	   *  TODO:
+	   *	Preferable to not do this with #ifdef ENABLE_USB_BULK_DEBUG but there is 
+	   *	currently no other compile time debug option
+	   */
+	  
+	  device_known = 1;
+#ifdef ENABLE_USB_BULK_DEBUG
+	  /* This device is known to the developers */
+	  fprintf(stderr, "Device %d (VID=%04x and PID=%04x) is a %s.\n", 
+		  current_device + 1,
+		  tmplist->libusb_device->descriptor.idVendor,
+		  tmplist->libusb_device->descriptor.idProduct,
+		  mtp_device_table[i].name);
+#endif
+	}
+	break;
+      }
+    }
+    if (!device_known) {
+      /* This device is unknown to the developers */
+      fprintf(stderr, "Device %d (VID=%04x and PID=%04x) is UNKNOWN.\n", 
+	      current_device + 1,
+	      tmplist->libusb_device->descriptor.idVendor,
+	      tmplist->libusb_device->descriptor.idProduct);
+      fprintf(stderr, "Please report this VID/PID and the device model to the "
+	      "libmtp development team\n");
+    }
+    tmplist = tmplist->next;
+    current_device++;
+  }
+}
+
+
+static LIBMTP_error_number_t configure_usb_devices(mtpdevice_list_t *devicelist)
+{
+  mtpdevice_list_t *tmplist = devicelist;
+  uint16_t ret = 0;
+  uint8_t current_device = 0;
+  
+  while (tmplist != NULL) {
+    /* This is erroneous, there must be a PTP_USB instance that we can initialize. */
+    if(tmplist->ptp_usb == NULL) {
+      return LIBMTP_ERROR_MEMORY_ALLOCATION;
+    }
+    
+    /* TODO: Will this always be little endian? */
+    tmplist->params->byteorder = PTP_DL_LE;
+    tmplist->params->cd_locale_to_ucs2 = iconv_open("UCS-2LE", "UTF-8");
+    tmplist->params->cd_ucs2_to_locale = iconv_open("UTF-8", "UCS-2LE");
+    
+    if(tmplist->params->cd_locale_to_ucs2 == (iconv_t) -1 ||
+       tmplist->params->cd_ucs2_to_locale == (iconv_t) -1) {
+      fprintf(stderr, "LIBMTP PANIC: Cannot open iconv() converters to/from UCS-2!\n"
+	      "Too old stdlibc, glibc and libiconv?\n");
+      return LIBMTP_ERROR_CONNECTING;
+    }
+    
+    // ep = device->config->interface->altsetting->endpoint;
+    // no_of_ep = device->config->interface->altsetting->bNumEndpoints;
+  
+    /* Assign endpoints to usbinfo... */
+    find_endpoints(tmplist->libusb_device,
+		   &tmplist->ptp_usb->inep,
+		   &tmplist->ptp_usb->inep_maxpacket,
+		   &tmplist->ptp_usb->outep,
+		   &tmplist->ptp_usb->outep_maxpacket,
+		   &tmplist->ptp_usb->intep);
+    
+    /* Attempt to initialize this device */
+    if (init_ptp_usb(tmplist->params, tmplist->ptp_usb, tmplist->libusb_device) < 0) {
+      fprintf(stderr, "LIBMTP PANIC: Unable to initialize device %d\n", current_device+1);
+      // FIXME: perhaps use "continue" to keep trying the other devices.
+      return LIBMTP_ERROR_CONNECTING;
+    }
+  
+    /*
+     * This works in situations where previous bad applications
+     * have not used LIBMTP_Release_Device on exit 
+     */
+    if ((ret = ptp_opensession(tmplist->params, 1)) == PTP_ERROR_IO) {
+      fprintf(stderr, "PTP_ERROR_IO: Trying again after resetting USB\n");
+      close_usb(tmplist->ptp_usb, tmplist->libusb_device->config->interface->altsetting->bInterfaceNumber);
+      
+      if(init_ptp_usb(tmplist->params, tmplist->ptp_usb, tmplist->libusb_device) <0) {
+	fprintf(stderr, "LIBMTP PANIC: Could not open session on device %d\n", current_device+1);
+	return LIBMTP_ERROR_CONNECTING;
+      }
+	
+      /* Device has been reset, try again */
+      ret = ptp_opensession(tmplist->params, 1);
+    }
+  
+    /* Was the transaction id invalid? Try again */
+    if (ret == PTP_RC_InvalidTransactionID) {
+      fprintf(stderr, "LIBMTP WARNING: Transaction ID was invalid, increment and try again\n");
+      tmplist->params->transaction_id += 10;
+      ret = ptp_opensession(tmplist->params, 1);
+    }
+
+    if (ret != PTP_RC_SessionAlreadyOpened && ret != PTP_RC_OK) {
+      fprintf(stderr, "LIBMTP PANIC: Could not open session! "
+	      "(Return code %d)\n  Try to reset the device.\n",
+	      ret);
+      usb_release_interface(tmplist->ptp_usb->handle,
+			    tmplist->libusb_device->config->interface->altsetting->bInterfaceNumber);
+      return LIBMTP_ERROR_CONNECTING;
+    }
+  
+    /* It is permissible to call this before opening the session */
+    if (ptp_getdeviceinfo(tmplist->params,
+			  &tmplist->params->deviceinfo) != PTP_RC_OK) {
+      fprintf(stderr, "LIBMTP PANIC: Could not get device info!\n");
+      usb_release_interface(tmplist->ptp_usb->handle,
+			    tmplist->libusb_device->config->interface->altsetting->bInterfaceNumber);
+      return LIBMTP_ERROR_CONNECTING;
+    }
+
+    tmplist = tmplist->next;
+    current_device++;
+  }
+
+  /* Exit with the nice list */
+  return LIBMTP_ERROR_NONE;
+}
+
+/**
+ * This function scans through the results of the get_mtp_usb_device_list
+ * function and attempts to connect to those devices listed using the 
+ * mtp_device_table at the top of the file. Returns a LIBMTP_error_number_t.
+ * 
+ * @param devlist a list of devices with primed PTP_USB and params structs.
+ * @return Error Codes as per the type definition
+ */ 
+LIBMTP_error_number_t find_usb_devices(mtpdevice_list_t **devlist)
+{
+  mtpdevice_list_t *mtp_device_list = NULL;
+  LIBMTP_error_number_t ret;
+
+  /* Recover list of attached USB devices that match MTP criteria */
+  ret = get_mtp_usb_device_list (&mtp_device_list);
+  if (ret == LIBMTP_ERROR_NO_DEVICE_ATTACHED) {
+    /* Auto-detection did not find any MTP devices, then search known device 
+     * list.
+     *
+     * FIXME: if there are both auto-detected and non-autodetected devices
+     *        attached, the non-autodetected ones will not be found!!
+     *        This behaviour is a leftover from the old function that could
+     *        only retrieve ONE device. What we need to do is make a union
+     *        of both lists.
+     */
+    ret = get_mtp_usb_known_devices (&mtp_device_list);
+  }
+  if (ret != LIBMTP_ERROR_NONE) {
+    return ret;
+  }
+  
+  // Then prime them
+  ret = prime_device_memory(mtp_device_list);
+  if(ret) {
+    fprintf(stderr, "LIBMTP PANIC: prime_device_memory() error code: %d on line %d\n", ret, __LINE__);
+    goto find_usb_devices_error_exit;
+  }
+
+  /* Assign specific device flags and detect unknown devices */
+  assign_known_device_flags(mtp_device_list);
+  
+  /* Configure the devices */
+  ret = configure_usb_devices(mtp_device_list);
+  if(ret) {
+    fprintf(stderr, "LIBMTP PANIC: configure_usb_devices() error code: %d on line %d\n", ret, __LINE__);
+    goto find_usb_devices_error_exit;
+  }
+  
+  /* Configure interface numbers */
+  {
+    mtpdevice_list_t *tmplist = mtp_device_list;
+
+    while (tmplist != NULL) {
+      tmplist->interface_number = tmplist->libusb_device->config->interface->altsetting->bInterfaceNumber;
+      tmplist = tmplist->next;
+    }
+  }
+  
+  /* we're connected to all devices, return the list and OK */
+  *devlist = mtp_device_list;
+  return LIBMTP_ERROR_NONE;
+  
+ find_usb_devices_error_exit:
+  if(mtp_device_list != NULL) {
+    free_mtpdevice_list(mtp_device_list);
+    mtp_device_list = NULL;
+  }
+  *devlist = NULL;
+  return ret;
+} 
 
 static void find_endpoints(struct usb_device *dev, int* inep, int* inep_maxpacket, int* outep, int *outep_maxpacket, int* intep)
 {
@@ -1365,31 +1707,6 @@ static void find_endpoints(struct usb_device *dev, int* inep, int* inep_maxpacke
 	}
     }
   }
-}
-
-int open_device (int busn, int devn, short force, PTP_USB *ptp_usb, PTPParams *params, struct usb_device **dev)
-{
-#ifdef DEBUG
-  printf("dev %i\tbus %i\n",devn,busn);
-#endif
-  
-  *dev=find_device(busn,devn,force);
-  if (*dev==NULL) {
-    fprintf(stderr,"could not find any device matching given "
-	    "bus/dev numbers\n");
-    exit(-1);
-  }
-  find_endpoints(*dev,&ptp_usb->inep,&ptp_usb->inep_maxpacket,&ptp_usb->outep,&ptp_usb->outep_maxpacket,&ptp_usb->intep);
-  
-  if (init_ptp_usb(params, ptp_usb, *dev) < 0) {
-    return -1;
-  }
-  if (ptp_opensession(params,1)!=PTP_RC_OK) {
-    fprintf(stderr,"ERROR: Could not open session!\n");
-    close_usb(ptp_usb, (*dev)->config->interface->altsetting->bInterfaceNumber);
-    return -1;
-  }
-  return 0;
 }
 
 void close_device (PTP_USB *ptp_usb, PTPParams *params, uint8_t interfaceNumber)

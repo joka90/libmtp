@@ -1,3 +1,24 @@
+/** 
+ * \file newplaylist.c
+ * Example program to create a playlist on a device.
+ *
+ * Copyright (C) 2006 Robert Reardon <rreardon@monkshatch.vispa.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ */
 #include "common.h"
 #include "string.h"
 #include <sys/stat.h>
@@ -66,10 +87,12 @@ int main (int argc, char **argv) {
   playlist->tracks = ids;
   int ret = LIBMTP_Create_New_Playlist(device,playlist,0);
   if (ret != 0) {
-    printf("Couldn't create album object\n");
+    printf("Couldn't create playlist object\n");
+    LIBMTP_Dump_Errorstack(device);
+    LIBMTP_Clear_Errorstack(device);
   }
   else {
-  	printf("Created new playlist: %u\n", playlist->playlist_id);
+    printf("Created new playlist: %u\n", playlist->playlist_id);
   }
 
   LIBMTP_Release_Device(device);

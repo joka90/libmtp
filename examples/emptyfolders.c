@@ -1,3 +1,24 @@
+/** 
+ * \file emptyfolders.c
+ * Example program that prunes empty folders.
+ *
+ * Copyright (C) 2006 Andy Kelk <andy@mopoke.co.uk>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ */
 #include "common.h"
 
 static void prune_empty_folders(LIBMTP_mtpdevice_t *device, LIBMTP_file_t *files, LIBMTP_folder_t *folderlist, int do_delete)
@@ -21,8 +42,10 @@ static void prune_empty_folders(LIBMTP_mtpdevice_t *device, LIBMTP_file_t *files
     if(found == 0) { // no files claim this as a parent
       printf("empty folder %u (%s)\n",folderlist->folder_id,folderlist->name);
       if(do_delete) {
-        if (LIBMTP_Delete_Object(device,folderlist->folder_id)) {
+        if (LIBMTP_Delete_Object(device,folderlist->folder_id) != 0) {
           printf("Couldn't delete folder %u\n",folderlist->folder_id);
+	  LIBMTP_Dump_Errorstack(device);
+	  LIBMTP_Clear_Errorstack(device);
         }
       }
     }

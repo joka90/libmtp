@@ -1,3 +1,25 @@
+/** 
+ * \file sendfile.c
+ * Example program to send an arbitrary file to a device.
+ *
+ * Copyright (C) 2005-2007 Linus Walleij <triad@df.lth.se>
+ * Copyright (C) 2006 Chris A. Debenham <chris@adebenham.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ */
 #include <string.h>
 #include <libgen.h>
 #include <sys/stat.h>
@@ -37,7 +59,6 @@ int sendfile_function(char * from_path, char *to_path)
   }
 
   filesize = (uint64_t) sb.st_size;
-
   filename = basename(from_path);
   parent_id = parse_path (to_path,files,folders);
   if (parent_id == -1) {
@@ -45,7 +66,6 @@ int sendfile_function(char * from_path, char *to_path)
     return 0;
   }
   
-
   genfile = LIBMTP_new_file_t();
   genfile->filesize = filesize;
   genfile->filename = strdup(filename);
@@ -53,8 +73,12 @@ int sendfile_function(char * from_path, char *to_path)
 
   printf("Sending file...\n");
   ret = LIBMTP_Send_File_From_File(device, from_path, genfile, progress, NULL, parent_id);
-
   printf("\n");
+  if (ret != 0) {
+    printf("Error sending file.\n");
+    LIBMTP_Dump_Errorstack(device);
+    LIBMTP_Clear_Errorstack(device);
+  }
 
   LIBMTP_destroy_file_t(genfile);
 

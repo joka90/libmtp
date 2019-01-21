@@ -1,3 +1,24 @@
+/** 
+ * \file albumart.c
+ * Example program to send album art.
+ *
+ * Copyright (C) 2006 Andy Kelk <andy@mopoke.co.uk>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ */
 #include "common.h"
 #include "string.h"
 #include <sys/stat.h>
@@ -106,10 +127,14 @@ int main (int argc, char **argv) {
     ret = LIBMTP_Send_Representative_Sample(device,album->album_id, albumart);
     if (ret != 0) {
       printf("Couldn't send album art\n");
+      LIBMTP_Dump_Errorstack(device);
+      LIBMTP_Clear_Errorstack(device);
     }
   }
   else {
     printf("Couldn't create album object\n");
+    LIBMTP_Dump_Errorstack(device);
+    LIBMTP_Clear_Errorstack(device);
   }
 
   LIBMTP_destroy_filesampledata_t(albumart);
