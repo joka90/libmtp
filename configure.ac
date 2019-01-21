@@ -1,6 +1,6 @@
 # Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.52)
-AC_INIT([libmtp], [0.3.4], [libmtp-discuss@lists.sourceforge.net])
+AC_INIT([libmtp], [0.3.5], [libmtp-discuss@lists.sourceforge.net])
 AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_SRCDIR([src/libmtp.c])
 AM_CONFIG_HEADER(config.h)
@@ -94,7 +94,7 @@ CFLAGS="$CFLAGS -Wall -Wmissing-prototypes"
 # that will always be available. The <stdint.h> file is required by the
 # library, but we provide this anyway because the libptp2 stuff wants this
 # file.
-AX_NEED_STDINT_H([src/libptp-stdint.h])
+AX_NEED_STDINT_H([src/_stdint.h])
 
 # Create a header file containing NetBSD-style byte swapping macros.
 # This m4 macros has caused severe pain, I am considering creating a 

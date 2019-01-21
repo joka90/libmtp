@@ -29,10 +29,18 @@
 /* Define aliases for the standard byte swapping macros */
 /* Arguments to these macros must be properly aligned on natural word */
 /* boundaries in order to work properly on all architectures */
-#define htobe16(x) htons(x)
-#define htobe32(x) htonl(x)
-#define be16toh(x) ntohs(x)
-#define be32toh(x) ntohl(x)
+#ifndef htobe16
+# define htobe16(x) htons(x)
+#endif
+#ifndef htobe32
+# define htobe32(x) htonl(x)
+#endif
+#ifndef be16toh
+# define be16toh(x) ntohs(x)
+#endif
+#ifndef be32toh
+# define be32toh(x) ntohl(x)
+#endif
 
 #define HTOBE16(x) (x) = htobe16(x)
 #define HTOBE32(x) (x) = htobe32(x)
@@ -40,12 +48,24 @@
 #define BE16TOH(x) (x) = be16toh(x)
 
 /* On little endian machines, these macros are null */
-#define htole16(x)      (x)
-#define htole32(x)      (x)
-#define htole64(x)      (x)
-#define le16toh(x)      (x)
-#define le32toh(x)      (x)
-#define le64toh(x)      (x)
+#ifndef htole16
+# define htole16(x)      (x)
+#endif
+#ifndef htole32
+# define htole32(x)      (x)
+#endif
+#ifndef htole64
+# define htole64(x)      (x)
+#endif
+#ifndef le16toh
+# define le16toh(x)      (x)
+#endif
+#ifndef le32toh
+# define le32toh(x)      (x)
+#endif
+#ifndef le64toh
+# define le64toh(x)      (x)
+#endif
 
 #define HTOLE16(x)      (void) (x)
 #define HTOLE32(x)      (void) (x)
@@ -55,14 +75,18 @@
 #define LE64TOH(x)      (void) (x)
 
 /* These don't have standard aliases */
-#define htobe64(x)      swap64(x)
-#define be64toh(x)      swap64(x)
+#ifndef htobe64
+# define htobe64(x)      swap64(x)
+#endif
+#ifndef be64toh
+# define be64toh(x)      swap64(x)
+#endif
 
 #define HTOBE64(x)      (x) = htobe64(x)
 #define BE64TOH(x)      (x) = be64toh(x)
 
 /* Define the C99 standard length-specific integer types */
-#include "libptp-stdint.h"
+#include <_stdint.h>
 
 /* Here are some macros to create integers from a byte array */
 /* These are used to get and put integers from/into a uint8_t array */

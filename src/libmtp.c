@@ -55,6 +55,9 @@
 #include <io.h>
 #endif
 
+/* To enable PTP level debug prints (all ptp_debug(...)), switch on this */
+//#define ENABLE_PTP_DEBUG
+
 /*
  * This is a mapping between libmtp internal MTP filetypes and
  * the libgphoto2/PTP equivalent defines. We need this because
@@ -127,7 +130,7 @@ static int set_object_u8(LIBMTP_mtpdevice_t *device, uint32_t const object_id,
 			 uint16_t const attribute_id, uint8_t const value);
 static void get_track_metadata(LIBMTP_mtpdevice_t *device, uint16_t objectformat,
 			       LIBMTP_track_t *track);
-static LIBMTP_folder_t *get_subfolders_for_folder(PTPParams *params, uint32_t parent);
+static LIBMTP_folder_t *get_subfolders_for_folder(LIBMTP_folder_t *list, uint32_t parent);
 static int create_new_abstract_list(LIBMTP_mtpdevice_t *device,
 				    char const * const name,
 				    char const * const artist,
@@ -854,6 +857,50 @@ LIBMTP_mtpdevice_t *LIBMTP_Get_First_Device(void)
 }
 
 /**
+ * Overriding debug function.
+ * This way we can disable debug prints.
+ */
+static void
+#ifdef __GNUC__
+__attribute__((__format__(printf,2,0)))
+#endif
+LIBMTP_ptp_debug(void *data, const char *format, va_list args)
+{
+#ifdef ENABLE_PTP_DEBUG
+  vfprintf (stderr, format, args);
+  fflush (stderr);
+#endif
+}
+
+/**
+ * Overriding error function.
+ * This way we can capture all error etc to our errorstack.
+ */
+static void
+#ifdef __GNUC__
+__attribute__((__format__(printf,2,0)))
+#endif
+LIBMTP_ptp_error(void *data, const char *format, va_list args)
+{
+  // if (data == NULL) {
+    vfprintf (stderr, format, args);
+    fflush (stderr);
+  /*
+    FIXME: find out how we shall get the device here.
+  } else {
+    PTP_USB *ptp_usb = data;
+    LIBMTP_mtpdevice_t *device = ...;
+    char buf[2048];
+
+    vsnprintf (buf, sizeof (buf), format, args);
+    add_error_to_errorstack(device,
+			    LIBMTP_ERROR_PTP_LAYER,
+			    buf);
+  }
+  */
+}
+
+/**
  * This function opens a device from a raw device. It is the
  * preferred way to access devices in the new interface where
  * several devices can come and go as the library is working
@@ -893,6 +940,11 @@ LIBMTP_mtpdevice_t *LIBMTP_Open_Raw_Device(LIBMTP_raw_device_t *rawdevice)
     return NULL;
   }
   memset(current_params, 0, sizeof(PTPParams));
+  /* This will be a pointer to PTP_USB later */
+  current_params->data = NULL;
+  /* Set upp local debug and error functions */
+  current_params->debug_func = LIBMTP_ptp_debug;
+  current_params->error_func = LIBMTP_ptp_error;
   /* Clear all handlers */
   current_params->handles.Handler = NULL;
   current_params->objectinfo = NULL;
@@ -950,14 +1002,14 @@ LIBMTP_mtpdevice_t *LIBMTP_Open_Raw_Device(LIBMTP_raw_device_t *rawdevice)
 				  PTP_OPC_ObjectSize, 
 				  current_params->deviceinfo.ImageFormats[i], 
 				  &opd) != PTP_RC_OK) {
-      printf("LIBMTP PANIC: create_usb_mtp_devices(): "
+      printf("LIBMTP PANIC: "
 	     "could not inspect object property descriptions!\n");
     } else {
       if (opd.DataType == PTP_DTC_UINT32) {
 	if (bs == 0) {
 	  bs = 32;
 	} else if (bs != 32) {
-	  printf("LIBMTP PANIC: create_usb_mtp_devices(): "
+	  printf("LIBMTP PANIC: "
 		 "different objects support different object sizes!\n");
 	  bs = 0;
 	  break;
@@ -966,14 +1018,14 @@ LIBMTP_mtpdevice_t *LIBMTP_Open_Raw_Device(LIBMTP_raw_device_t *rawdevice)
 	if (bs == 0) {
 	  bs = 64;
 	} else if (bs != 64) {
-	  printf("LIBMTP PANIC: create_usb_mtp_devices(): "
+	  printf("LIBMTP PANIC: "
 		 "different objects support different object sizes!\n");
 	  bs = 0;
 	  break;
 	}
       } else {
 	// Ignore if other size.
-	printf("LIBMTP PANIC: create_usb_mtp_devices(): "
+	printf("LIBMTP PANIC: "
 	       "awkward object size data type: %04x\n", opd.DataType);
 	bs = 0;
 	break;
@@ -5329,58 +5381,35 @@ LIBMTP_folder_t *LIBMTP_Find_Folder(LIBMTP_folder_t *folderlist, uint32_t id)
 /**
  * Function used to recursively get subfolders from params.
  */
-static LIBMTP_folder_t *get_subfolders_for_folder(PTPParams *params, uint32_t parent)
+static LIBMTP_folder_t *get_subfolders_for_folder(LIBMTP_folder_t *list, uint32_t parent)
 {
-  uint32_t i;
-  LIBMTP_folder_t *retfolders = NULL;
+  LIBMTP_folder_t *retfolders = NULL, *children, *iter, *curr;
 
-  for (i = 0; i < params->handles.n; i++) {
-    LIBMTP_folder_t *folder;
-    PTPObjectInfo *oi;
-    
-    oi = &params->objectinfo[i];
-    if (oi->ObjectFormat != PTP_OFC_Association || oi->ParentObject != parent) {
+  iter = list->sibling;
+  while(iter != list) {
+    if (iter->parent_id != parent) {
+      iter = iter->sibling;
       continue;
     }
 
-    // Do we know how to handle these? They are part
-    // of the MTP 1.0 specification paragraph 3.6.4.
-    // For AssociationDesc 0x00000001U ptp_mtp_getobjectreferences() 
-    // should be called on these to get the contained objects, but 
-    // we basically don't care. Hopefully parent_id is maintained for all
-    // children, because we rely on that instead.
-    if (oi->AssociationDesc != 0x00000000U) {
-      printf("MTP extended association type 0x%08x encountered\n", oi->AssociationDesc);
-    }
+    /* We know that iter is a child of 'parent', therefore we can safely
+     * hold on to 'iter' locally since no one else will steal it
+     * from the 'list' as we recurse. */
+    children = get_subfolders_for_folder(list, iter->folder_id);
 
-    // Create a folder struct...
-    folder = LIBMTP_new_folder_t();
-    if (folder == NULL) {
-      // malloc failure or so.
-      return NULL;
-    }
-    folder->folder_id = params->handles.Handler[i];
-    folder->parent_id = oi->ParentObject;
-    folder->storage_id = oi->StorageID;
-    if (oi->Filename != NULL) {
-      folder->name = (char *)strdup(oi->Filename);
-    } else {
-      folder->name = NULL;
-    }
+    curr = iter;
+    iter = iter->sibling;
 
-    // Add as first returned or a sibling to current
-    if (retfolders == NULL) {
-      retfolders = folder;
-    } else {
-      LIBMTP_folder_t *tmp = retfolders;
-      while (tmp->sibling != NULL) {
-	tmp = tmp->sibling;
-      }
-      tmp->sibling = folder;
-    }
+    // Remove curr from the list.
+    curr->child->sibling = curr->sibling;
+    curr->sibling->child = curr->child;
     
-    // Recursively get children for this child. Perhaps NULL.
-    folder->child = get_subfolders_for_folder(params, folder->folder_id);
+    // Attach the children to curr.
+    curr->child = children;
+      
+    // Put this folder into the list of siblings.
+    curr->sibling = retfolders;
+    retfolders = curr;
   }
 
   return retfolders;
@@ -5396,20 +5425,84 @@ static LIBMTP_folder_t *get_subfolders_for_folder(PTPParams *params, uint32_t pa
 LIBMTP_folder_t *LIBMTP_Get_Folder_List(LIBMTP_mtpdevice_t *device)
 {
   PTPParams *params = (PTPParams *) device->params;
+  LIBMTP_folder_t head, *rv;
+  int i;
 
   // Get all the handles if we haven't already done that
   if (params->handles.Handler == NULL) {
     flush_handles(device);
   }
 
-  // TODO: make a temporary list of folders only to
-  //       speed up searching? Else we get O(n^2) complexity
-  //       where n is the number of handles on the device,
-  //       in the following recursive call. Making a temp
-  //       list will reduce n to the number of folders.
+  /*
+   * This creates a temporary list of the folders, this is in a
+   * reverse order and uses the Folder pointers that are already
+   * in the Folder structure. From this we can then build up the
+   * folder hierarchy with only looking at this temporary list,
+   * and removing the folders from this temporary list as we go.
+   * This significantly reduces the number of operations that we
+   * have to do in building the folder hierarchy. Also since the
+   * temp list is in reverse order, when we prepend to the sibling
+   * list things are in the same order as they were originally
+   * in the handle list.
+   */
+  head.sibling = &head;
+  head.child = &head;
+  for (i = 0; i < params->handles.n; i++) {
+    LIBMTP_folder_t *folder;
+    PTPObjectInfo *oi;
+
+    oi = &params->objectinfo[i];
+    if (oi->ObjectFormat != PTP_OFC_Association) {
+      continue;
+    }
+    /*
+     * Do we know how to handle these? They are part
+     * of the MTP 1.0 specification paragraph 3.6.4.
+     * For AssociationDesc 0x00000001U ptp_mtp_getobjectreferences() 
+     * should be called on these to get the contained objects, but 
+     * we basically don't care. Hopefully parent_id is maintained for all
+     * children, because we rely on that instead.
+     */
+    if (oi->AssociationDesc != 0x00000000U) {
+      printf("MTP extended association type 0x%08x encountered\n", oi->AssociationDesc);
+    }
+
+    // Create a folder struct...
+    folder = LIBMTP_new_folder_t();
+    if (folder == NULL) {
+      // malloc failure or so.
+      return NULL;
+    }
+    folder->folder_id = params->handles.Handler[i];
+    folder->parent_id = oi->ParentObject;
+    folder->storage_id = oi->StorageID;
+    folder->name = (oi->Filename) ? (char *)strdup(oi->Filename) : NULL;
+
+    // pretend sibling says next, and child says prev.
+    folder->sibling = head.sibling;
+    folder->child = &head;
+    head.sibling->child = folder;
+    head.sibling = folder;
+  }
 
   // We begin at the root folder and get them all recursively
-  return get_subfolders_for_folder(params, 0x00000000);
+  rv = get_subfolders_for_folder(&head, 0x00000000);
+
+  // The temp list should be empty. Clean up any orphans just in case.
+  while(head.sibling != &head) {
+    LIBMTP_folder_t *curr = head.sibling;
+
+    printf("Orphan folder with ID: 0x%08x name: \"%s\" encountered.\n",
+	   curr->folder_id,
+	   curr->name);
+    curr->sibling->child = curr->child;
+    curr->child->sibling = curr->sibling;
+    curr->child = NULL;
+    curr->sibling = NULL;
+    LIBMTP_destroy_folder_t(curr);
+  }
+
+  return rv;
 }
 
 /**
@@ -5998,7 +6091,7 @@ static int create_new_abstract_list(LIBMTP_mtpdevice_t *device,
   }
 
   if (no_tracks > 0) {
-    // Add tracks to the new playlist as object references.
+    // Add tracks to the list as object references.
     ret = ptp_mtp_setobjectreferences (params, *newid, (uint32_t *) tracks, no_tracks);
     if (ret != PTP_RC_OK) {
       add_ptp_error_to_errorstack(device, ret, "create_new_abstract_list(): could not add tracks as object references.");
@@ -6207,14 +6300,11 @@ static int update_abstract_list(LIBMTP_mtpdevice_t *device,
   }
   
   // Then the object references...
-  if (no_tracks > 0) {
-    // Add tracks to the new album as object references.
-    ret = ptp_mtp_setobjectreferences (params, objecthandle, (uint32_t *) tracks, no_tracks);
-    if (ret != PTP_RC_OK) {
-      add_ptp_error_to_errorstack(device, ret, "update_abstract_list(): could not add tracks as object references.");
-      free(properties);
-      return -1;
-    }
+  ret = ptp_mtp_setobjectreferences (params, objecthandle, (uint32_t *) tracks, no_tracks);
+  if (ret != PTP_RC_OK) {
+    add_ptp_error_to_errorstack(device, ret, "update_abstract_list(): could not add tracks as object references.");
+    free(properties);
+    return -1;
   }
 
   free(properties);
@@ -6278,17 +6368,20 @@ int LIBMTP_Create_New_Playlist(LIBMTP_mtpdevice_t *device,
  * supplied. If the <code>tracks</code> field of the metadata
  * contains a track listing, these tracks will be added to the
  * playlist in place of those already present, i.e. the
- * previous track listing will be deleted.
+ * previous track listing will be deleted. For Samsung devices the
+ * playlist id (metadata->playlist_id) is likely to change.
  * @param device a pointer to the device to create the new playlist on.
  * @param metadata the metadata for the playlist to be updated.
  *                 notice that the field <code>playlist_id</code>
- *                 must contain the apropriate playlist ID.
+ *                 must contain the apropriate playlist ID. Playlist ID
+ *                 be modified to a new playlist ID by the time the
+ *                 function returns since edit-in-place is not always possible.
  * @return 0 on success, any other value means failure.
  * @see LIBMTP_Create_New_Playlist()
  * @see LIBMTP_Delete_Object()
  */
 int LIBMTP_Update_Playlist(LIBMTP_mtpdevice_t *device,
-			   LIBMTP_playlist_t const * const metadata)
+			   LIBMTP_playlist_t * const metadata)
 {
 
   // Samsung needs its own special type of playlists

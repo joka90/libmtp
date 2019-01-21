@@ -1,3 +1,52 @@
+2008-12-15  Nathan Bullock <nathanbullock@gmail.com>
+
+	* src/libmtp.c: get folders to a flat list and we get O(n) searching
+	  instead of the previous O(n^2) algorithm!
+
+2008-12-13  Linus Walleij <triad@df.lth.se>
+
+	* examples/detect.c: make mtp-detect dump out default-capabilities.xml
+	  if such a file exists on the device.
+	* m4/stdint.m4: update to newer macro from libgphoto2.
+	* m4/byteorder.m4: update to newer macro from libgphoto2.
+	  We find these here:
+	  http://gphoto.svn.sourceforge.net/viewvc/gphoto/trunk/m4/
+	* configure.ac: fix the renamed _stdint.h too.
+	* Doxyfile.in: some config option got obsolete.
+	* libmtp.c: start to use PTP error redirection to the libmtp error
+	  stack. This also makes it possible to stop the annoying debug prints.
+	* libusb-glue.c: dito.
+	* ptp.c: sync to upstream.
+	* ptp.h: sync to upstream.
+
+2008-12-02  Linus Walleij <triad@df.lth.se>
+
+	* examples/util.c: another NULL check.
+
+2008-11-25  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: fix a bug on handling folder children with an illegal
+	  ID of 0. Occured in the ZEN Xi-Fi in the "Recordings" folder, when
+	  that is created on the device.
+
+2008-11-17  Alistair Boyle <alistair.js.boyle@gmail.com>
+
+	* configure.ac: change release to 0.3.5.
+	* libmtp.c: change metadata const*const to *const to allow playlist_id
+	  to be modified by LIBMTP_Update_Playlist. (Samsung playlists)
+	* libmtp.h.in: match libmtp.c
+
+2008-11-11  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: allow for playlists with zero tracks on them,
+	  also in update.
+
+2008-11-09  Linus Walleij <triad@df.lth.se>
+
+	* src/ptp.h: sync from upstream.
+	* src/ptp.c: sync from upstream.
+	* src/ptp-pack.c: sync from upstream.
+
 2008-11-07  Linus Walleij <triad@df.lth.se>
 
 	* Release libmtp 0.3.4.
