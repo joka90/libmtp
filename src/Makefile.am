@@ -1,6 +1,4 @@
 lib_LTLIBRARIES=libmtp.la
-# Removed: ptp-pack.h mtp-pack.c mtp-pack.h mtp.h mtp.c ptp-pack.c
-# Renamed: libptp-endian.h -> gphoto2-endian.h
 libmtp_la_SOURCES=libmtp.c unicode.c unicode.h util.c util.h \
 	libusb-glue.c libusb-glue.h \
 	gphoto2-endian.h libptp-stdint.h ptp.c ptp.h
@@ -29,9 +27,9 @@ EXTRA_DIST=libmtp.h.in libmtp.sym ptp-pack.c
 #  increment AGE, Otherwise AGE is reset to 0. If CURRENT has changed, 
 #  REVISION is set to 0, otherwise REVISION is incremented.
 # ---------------------------------------------------------------------------
-CURRENT=6
+CURRENT=7
 AGE=0
-REVISION=2
+REVISION=0
 SOVERSION=$(CURRENT):$(REVISION):$(AGE)
 
 if COMPILE_MINGW32

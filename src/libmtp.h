@@ -28,8 +28,8 @@
 #ifndef LIBMTP_H_INCLUSION_GUARD
 #define LIBMTP_H_INCLUSION_GUARD
 
-#define LIBMTP_VERSION 0.2.2
-#define LIBMTP_VERSION_STRING "0.2.2"
+#define LIBMTP_VERSION 0.2.3
+#define LIBMTP_VERSION_STRING "0.2.3"
 
 /* This handles MSVC pecularities */
 #ifdef _MSC_VER
@@ -158,8 +158,9 @@ typedef int (* LIBMTP_progressfunc_t) (uint64_t const sent, uint64_t const total
  * A data structure to hold MTP device entries.
  */
 struct LIBMTP_device_entry_struct {
-  char *name; /**< The descriptive name of this device */
+  char *vendor; /**< The vendor of this device */
   uint16_t vendor_id; /**< Vendor ID for this device */
+  char *product; /**< The product name of this device */
   uint16_t product_id; /**< Product ID for this device */
   uint32_t device_flags; /**< Bugs, device specifics etc */
 };
