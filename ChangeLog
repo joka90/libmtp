@@ -1,4 +1,100 @@
-2007-01-08  Linus Walleij <triad@df.lth.se>
+2008-03-02  Linus Walleij <triad@df.lth.se>
+
+	* configure.ac: prepare 0.2.6 release.
+	* src/Makefile.am: bump to compatible interface, 
+	* src/ptp.c: sync in upstream, a Sansa fix!
+	* src/ptp.h: sync in upstream.
+	* doc/Doxyfile.in: retire obsoleted parameters.
+	* Release this as 0.2.6!
+	
+2008-02-24  Richard Low <richard@wentnet.com>
+
+	* src/music-players.h: add DEVICE_FLAG_BROKEN_MTPGETOBJPROPLIST_ALL
+	  for a broken Philips player.
+
+2008-02-18  Linus Walleij <triad@df.lth.se>
+
+	* examples/pathutils.c: fix up item ID typing to uint32_t,
+	  handle file names passed in as arguments at suggestion from
+	  anonymous mail list user.
+	* examples/pathutils.h: move a function static.
+
+2008-02-12  Nicolas Pennequin <nicolas.pennequin@free.fr>
+
+	* examples/sendtr.c: add transferred tracks to albums if possible.
+
+2008-02-10  Scott Snyder <snyder@fnal.gov>
+
+	* src/libusb-glue.c: finally fix up the short header detection
+	  to skip over zero packets when encountered.
+	* examples/pathutils.c: fix a problem where all files sent has
+	  to include a "." (period).
+
+2008-02-06  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.c: wait for response > 0 instead of > 2.
+
+2008-01-28  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: LIBMTP_Get_Filemetadata() return metadata for
+	  folders (associations) too. There is really no reason why it
+	  shouldn't and it's good for use internally. 
+	  LIBMTP_Get_Filelisting_With_Callback() will still not return
+	  any associations however. We want to use the folder functions
+	  for that.
+
+2008-01-28  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.h.in: withdraw LIBMTP_Set_Object_Parent() function,
+	  no known devices will support this.
+	* src/libmtp.c: dito. Fix up some problems with the 
+	  LIBMTP_Set_Object_Filename() function.
+
+2008-01-27  Linus Walleij <triad@df.lth.se>
+
+	* src/libmtp.c: fix up some minor things and documentation on
+	  the object handling functions.
+
+2008-01-27  Florent Mertens <flomertens@gmail.com>
+
+	* src/libmtp.h.in: new functions to rename object filenames
+	  and change object parents. Good when modifying the device
+	  as a file system, LIBMTP_Set_Object_Filename(),
+	  LIBMTP_Set_Object_Parent().
+	* src/libmtp.c: implementation.
+
+2008-01-27  Linus Walleij <triad@df.lth.se>
+
+	* src/libusb-glue.c: re-read response from device until
+	  it atleast exceeds two bytes. This fixes a problem with
+	  the Samsung YP-U3 when populated with many, many songs.
+
+2008-01-21  Richard Low <richard@wentnet.com>
+
+	* src/music-players.h: add Thomson Lyrca HC308A, remove
+	  incorrect ID for Creative Zen 8GB
+
+2008-01-20  Richard Low <richard@wentnet.com>
+
+	* src/libmtp.c: add LIBMTP_Get_Representative_Sample()
+	* src/libmtp.h.in: ditto
+
+2008-01-14  Linus Walleij <triad@df.lth.se>
+	
+	* src/libmtp.c: add LIBMTP_Get_Manufacturername(). Remember
+	  to bump soname (compatible) in 0.2.6 (or whatever we name it).
+	  0.3.0 perhaps?
+	* src/libmtp.h.in: dito.
+	* src/libmtp.c: detect default folders named "Datacasts" and
+	  "Texts".
+
+2008-01-11  Linus Walleij <triad@df.lth.se>
+
+	* examples/pathutils.c: recognize .bin files as firmware,
+	  used by e.g. RockBox developers. Doesn't cost anything to
+	  add.
+	
+2008-01-08  Linus Walleij <triad@df.lth.se>
 
 	* configure.ac: bump to 0.2.5.
 	* src/Makefile.am: interface to libmtp.so.7.0.2
