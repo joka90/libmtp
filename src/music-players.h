@@ -3353,6 +3353,8 @@
    */
   { "Garmin", 0x091e, "Monterra", 0x2585,
       DEVICE_FLAGS_ANDROID_BUGS },
+  { "Garmin", 0x091e, "Vivoactive 4S", 0x4c98,
+      DEVICE_FLAGS_ANDROID_BUGS },
 
   /*
    * Wacom

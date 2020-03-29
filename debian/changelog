@@ -1,3 +1,9 @@
+libmtp (1.1.13-1.2) unstable; urgency=low
+
+  * Add support for Garmin Vivoactive 4S
+
+ -- Johan Källström <johka546@student.liu.se>  Sun, 29 Mar 2020 16:51:55 +0100
+
 libmtp (1.1.13-1.1) unstable; urgency=low
 
   * Non-maintainer upload.
